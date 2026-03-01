@@ -1,4 +1,4 @@
-package com.videomaestro.video_maestro
+package com.videomaestro.editor
 
 import io.flutter.embedding.android.FlutterActivity
 
