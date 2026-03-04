@@ -2,10 +2,11 @@ import axios from 'axios';
 import { validateTimeline, Timeline } from '../video/timeline.schema';
 
 /**
- * Configuration Ollama
+ * Configuration Ollama (optionnel - désactivé si pas configuré)
  */
-const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
+const OLLAMA_URL = process.env.OLLAMA_URL || '';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:3b';
+const OLLAMA_ENABLED = !!OLLAMA_URL;
 
 /**
  * Prompt système pour guider l'IA
@@ -115,8 +116,13 @@ export class ScriptParser {
 
   /**
    * Parse un script et retourne une timeline validée
+   * Si Ollama n'est pas disponible, retourne une erreur explicite
    */
   async parseScript(script: string, availableFiles: string[]): Promise<Timeline> {
+    if (!OLLAMA_ENABLED) {
+      throw new Error('⚠️ Ollama service not configured - AI script generation is disabled. Please configure OLLAMA_URL environment variable.');
+    }
+
     // Ajoute les fichiers disponibles au contexte
     const enhancedPrompt = `${script}\n\nFichiers disponibles : ${availableFiles.join(', ')}`;
 
@@ -147,6 +153,10 @@ export class ScriptParser {
    * Vérifie si Ollama est disponible
    */
   async checkHealth(): Promise<boolean> {
+    if (!OLLAMA_ENABLED) {
+      return false;
+    }
+
     try {
       const response = await axios.get(`${OLLAMA_URL}/api/tags`, {
         timeout: 5000

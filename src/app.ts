@@ -18,13 +18,20 @@ import { initializeFirebase, verifyIdToken } from './middleware/firebase.middlew
 
 dotenv.config();
 
-// Critical environment variables validation
-const requiredEnvVars = ['PORT', 'REDIS_HOST', 'REDIS_PORT', 'OLLAMA_URL'];
-const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
+// Environment variables with fallback defaults (Railway-ready)
+// Redis is optional - will use in-memory queue if not available
+const REDIS_ENABLED = process.env.REDIS_HOST ? true : false;
 
-if (missingVars.length > 0) {
-  logger.error(`❌ Missing required environment variables: ${missingVars.join(', ')}`);
-  process.exit(1);
+// Ollama is optional - AI features disabled if not available
+const OLLAMA_URL = process.env.OLLAMA_URL || '';
+const OLLAMA_ENABLED = !!OLLAMA_URL;
+
+if (!REDIS_ENABLED) {
+  logger.warn('⚠️  Redis not configured - using in-memory queue (not recommended for production)');
+}
+
+if (!OLLAMA_ENABLED) {
+  logger.warn('⚠️  Ollama not configured - AI script generation disabled');
 }
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
