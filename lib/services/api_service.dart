@@ -7,11 +7,9 @@ import '../models/user_stats.dart';
 
 /// Service pour communiquer avec le backend Node.js
 class ApiService {
-  // URL du backend - À CONFIGURER
-  // Pour développement local : 'http://10.0.2.2:3000' (émulateur Android)
-  // Pour appareil physique : 'http://192.168.1.X:3000' (remplacer X par votre IP)
-  // Pour production : 'https://votre-serveur.com'
-  static const String baseUrl = 'http://10.0.2.2:3000';
+  // URL du backend - PRODUCTION RAILWAY
+  // Backend déployé sur Railway.app
+  static const String baseUrl = 'https://video-maestros-production.up.railway.app';
 
   // Token Firebase pour authentification
   String? _authToken;
