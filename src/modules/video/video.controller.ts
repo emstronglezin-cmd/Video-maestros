@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { getVideoService } from './video.service';
+import { VideoModel } from './video.model';
 import { parseScriptWithOllama } from '../ai/script.parser';
 import { timelineSchema } from './timeline.schema';
 import { logger } from '../../utils/logger';
@@ -9,9 +10,11 @@ import path from 'path';
 export class VideoController {
   private router: Router;
   private videoService = getVideoService();
+  private videoModel: VideoModel;
 
   constructor() {
     this.router = Router();
+    this.videoModel = new VideoModel();
     this.setupRoutes();
   }
 
@@ -19,6 +22,7 @@ export class VideoController {
     this.router.post('/parse-script', this.parseScript.bind(this));
     this.router.post('/create', this.createVideo.bind(this));
     this.router.get('/status/:id', this.getStatus.bind(this));
+    this.router.get('/list', this.listVideos.bind(this));
     this.router.get('/stats', this.getUserStats.bind(this));
     this.router.get('/queue-stats', this.getQueueStats.bind(this));
   }
@@ -174,6 +178,38 @@ export class VideoController {
   }
 
   /**
+   * GET /api/video/list
+   * List all videos for the authenticated user
+   */
+  private async listVideos(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({
+          success: false,
+          error: 'Authentication required',
+        });
+        return;
+      }
+
+      const videos = await this.videoModel.findByUserId(req.user.uid);
+
+      res.json({
+        success: true,
+        data: {
+          videos,
+          count: videos.length,
+        },
+      });
+    } catch (error: any) {
+      logger.error('❌ Failed to list videos:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to list videos',
+      });
+    }
+  }
+
+  /**
    * GET /api/video/stats
    * Get user stats (exports, limits, etc.)
    */
@@ -188,12 +224,14 @@ export class VideoController {
       }
 
       const stats = await this.videoService.getUserStats(req.user.uid);
+      const totalVideos = await this.videoModel.countByUserId(req.user.uid);
 
       res.json({
         success: true,
         data: {
           ...stats,
           isPremium: req.user.isPremium,
+          totalVideos,
         },
       });
     } catch (error: any) {

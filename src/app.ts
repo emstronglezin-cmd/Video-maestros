@@ -4,6 +4,8 @@ import multer from 'multer';
 import fs from 'fs/promises';
 import dotenv from 'dotenv';
 import { VideoController } from './modules/video/video.controller';
+import { UserController } from './modules/user/user.controller';
+import { StorageController } from './modules/storage/storage.controller';
 import { logger, requestLogger } from './utils/logger';
 import {
   helmetMiddleware,
@@ -187,11 +189,19 @@ export function createApp(): Express {
     }
   );
 
-  // 9. Video routes (all protected with auth)
+  // 9. User routes (protected with auth)
+  const userController = new UserController();
+  app.use('/api/user', verifyIdToken, userController.getRouter());
+
+  // 10. Storage routes (protected with auth)
+  const storageController = new StorageController();
+  app.use('/api/storage', verifyIdToken, storageController.getRouter());
+
+  // 11. Video routes (all protected with auth)
   const videoController = new VideoController();
   app.use('/api/video', verifyIdToken, videoController.getRouter());
 
-  // 10. 404 handler
+  // 11. 404 handler
   app.use((_req: Request, res: Response) => {
     res.status(404).json({
       success: false,
@@ -199,7 +209,7 @@ export function createApp(): Express {
     });
   });
 
-  // 11. Global error handler
+  // 13. Global error handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction): void => {
     logger.error('❌ Global error handler:', err);
 
@@ -252,10 +262,13 @@ export async function startServer(): Promise<void> {
 ║  📍 Routes:                                                 ║
 ║     GET    /api/health                                     ║
 ║     POST   /api/upload           (auth required)          ║
+║     GET    /api/user/me          (auth required)          ║
+║     POST   /api/user/setup       (auth required)          ║
+║     PUT    /api/user/me          (auth required)          ║
 ║     POST   /api/video/parse-script (auth required)        ║
 ║     POST   /api/video/create     (auth required)          ║
 ║     GET    /api/video/status/:id (auth required)          ║
-║     GET    /api/video/stats      (auth required)          ║
+║     GET    /api/video/list       (auth required)          ║
 ╚════════════════════════════════════════════════════════════╝
       `);
     });
