@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { VideoController } from './modules/video/video.controller';
 import { UserController } from './modules/user/user.controller';
 import { StorageController } from './modules/storage/storage.controller';
+import v3Controller from './controllers/v3.controller';
 import { logger, requestLogger } from './utils/logger';
 import {
   helmetMiddleware,
@@ -201,7 +202,10 @@ export function createApp(): Express {
   const videoController = new VideoController();
   app.use('/api/video', verifyIdToken, videoController.getRouter());
 
-  // 11. 404 handler
+  // 12. V3 Routes: Caption, Template, Batch, Social, Marketplace
+  app.use('/api', v3Controller);
+
+  // 13. 404 handler
   app.use((_req: Request, res: Response) => {
     res.status(404).json({
       success: false,
@@ -209,7 +213,7 @@ export function createApp(): Express {
     });
   });
 
-  // 13. Global error handler
+  // 14. Global error handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction): void => {
     logger.error('❌ Global error handler:', err);
 
@@ -269,6 +273,11 @@ export async function startServer(): Promise<void> {
 ║     POST   /api/video/create     (auth required)          ║
 ║     GET    /api/video/status/:id (auth required)          ║
 ║     GET    /api/video/list       (auth required)          ║
+║     POST   /api/caption/generate (auth required) [V3]     ║
+║     GET    /api/templates        (auth required) [V3]     ║
+║     POST   /api/batch/create     (auth required) [V3]     ║
+║     GET    /api/social/accounts  (auth required) [V3]     ║
+║     GET    /api/marketplace/*    (auth required) [V3]     ║
 ╚════════════════════════════════════════════════════════════╝
       `);
     });
