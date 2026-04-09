@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum VoiceLanguage { french, englishUS, englishGB, moore }
+enum VoiceLanguage { french, englishUS, englishGB, more }
 enum VoiceStyle { professional, fun, storytelling }
 
 class TTSConfig {
@@ -8,25 +8,27 @@ class TTSConfig {
   VoiceStyle style;
   double speed;
   double volume;
+  String text;
   
   TTSConfig({
     this.language = VoiceLanguage.french,
     this.style = VoiceStyle.professional,
     this.speed = 1.0,
     this.volume = 1.0,
+    this.text = '',
   });
 }
 
 class TTSControlsWidget extends StatefulWidget {
   final TTSConfig initialConfig;
   final Function(TTSConfig) onConfigChanged;
-  final bool enabled;
+  final VoidCallback? onGenerate;
   
   const TTSControlsWidget({
     Key? key,
     required this.initialConfig,
     required this.onConfigChanged,
-    this.enabled = true,
+    this.onGenerate,
   }) : super(key: key);
 
   @override
@@ -34,401 +36,386 @@ class TTSControlsWidget extends StatefulWidget {
 }
 
 class _TTSControlsWidgetState extends State<TTSControlsWidget> {
-  late TTSConfig _config;
-  bool _isExpanded = false;
+  late TTSConfig config;
+  final TextEditingController _textController = TextEditingController();
+  bool isGenerating = false;
 
   @override
   void initState() {
     super.initState();
-    _config = widget.initialConfig;
+    config = widget.initialConfig;
+    _textController.text = config.text;
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
   }
 
   void _updateConfig() {
-    widget.onConfigChanged(_config);
+    config.text = _textController.text;
+    widget.onConfigChanged(config);
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.grey[850],
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.purple.withOpacity(0.3)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
-          ListTile(
-            leading: const Icon(Icons.record_voice_over, color: Colors.purple),
-            title: const Text(
-              '🎤 Voix AI (Text-to-Speech)',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              const Icon(Icons.record_voice_over, color: Colors.purple, size: 28),
+              const SizedBox(width: 12),
+              const Text(
+                '🎙️ Voix IA (TTS)',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.help_outline, color: Colors.white70),
+                onPressed: _showHelp,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Text input
+          TextField(
+            controller: _textController,
+            maxLines: 4,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Entrez le texte à vocaliser...',
+              hintStyle: const TextStyle(color: Colors.white38),
+              filled: true,
+              fillColor: Colors.grey[800],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+              counterText: '${_textController.text.length} caractères',
+              counterStyle: const TextStyle(color: Colors.white54, fontSize: 11),
             ),
-            subtitle: widget.enabled
-                ? Text(
-                    '${_getLanguageLabel(_config.language)} • ${_getStyleLabel(_config.style)}',
-                    style: const TextStyle(color: Colors.purple, fontSize: 12),
-                  )
-                : const Text(
-                    'Désactivé',
-                    style: TextStyle(color: Colors.white54, fontSize: 12),
-                  ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
+            onChanged: (_) {
+              setState(() {});
+              _updateConfig();
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Language selection
+          const Text(
+            'Langue:',
+            style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              _buildLanguageChip('🇫🇷 Français', VoiceLanguage.french),
+              _buildLanguageChip('🇺🇸 English US', VoiceLanguage.englishUS),
+              _buildLanguageChip('🇬🇧 English UK', VoiceLanguage.englishGB),
+              _buildLanguageChip('🌍 Mooré', VoiceLanguage.more),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Voice style selection
+          const Text(
+            'Style de voix:',
+            style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              _buildStyleChip('💼 Professionnel', VoiceStyle.professional, Icons.business_center),
+              _buildStyleChip('😄 Fun', VoiceStyle.fun, Icons.emoji_emotions),
+              _buildStyleChip('📖 Storytelling', VoiceStyle.storytelling, Icons.auto_stories),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Speed control
+          Row(
+            children: [
+              const Text('Vitesse:', style: TextStyle(color: Colors.white70, fontSize: 14)),
+              Expanded(
+                child: Slider(
+                  value: config.speed,
+                  min: 0.5,
+                  max: 2.0,
+                  divisions: 15,
+                  label: '${config.speed.toStringAsFixed(1)}x',
+                  activeColor: Colors.purple,
+                  onChanged: (value) {
+                    setState(() {
+                      config.speed = value;
+                    });
+                    _updateConfig();
+                  },
+                ),
+              ),
+              Text(
+                '${config.speed.toStringAsFixed(1)}x',
+                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+
+          // Volume control
+          Row(
+            children: [
+              const Text('Volume:', style: TextStyle(color: Colors.white70, fontSize: 14)),
+              Expanded(
+                child: Slider(
+                  value: config.volume,
+                  min: 0.0,
+                  max: 1.0,
+                  divisions: 10,
+                  label: '${(config.volume * 100).toInt()}%',
+                  activeColor: Colors.purple,
+                  onChanged: (value) {
+                    setState(() {
+                      config.volume = value;
+                    });
+                    _updateConfig();
+                  },
+                ),
+              ),
+              Text(
+                '${(config.volume * 100).toInt()}%',
+                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Preview info
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[800],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
               children: [
-                if (widget.enabled)
-                  IconButton(
-                    icon: Icon(
-                      _isExpanded ? Icons.expand_less : Icons.expand_more,
-                      color: Colors.white70,
-                    ),
-                    onPressed: () {
-                      setState(() => _isExpanded = !_isExpanded);
-                    },
+                const Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _getConfigSummary(),
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
+                ),
               ],
             ),
           ),
+          const SizedBox(height: 16),
 
-          // Expanded controls
-          if (_isExpanded && widget.enabled) ...[
-            const Divider(color: Colors.grey),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Language selector
-                  const Text(
-                    'Langue',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: VoiceLanguage.values.map((lang) {
-                      final isSelected = _config.language == lang;
-                      return ChoiceChip(
-                        label: Text(_getLanguageLabel(lang)),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          if (selected) {
-                            setState(() {
-                              _config.language = lang;
-                              _updateConfig();
-                            });
-                          }
-                        },
-                        selectedColor: Colors.purple,
-                        backgroundColor: Colors.grey[800],
-                        labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : Colors.white70,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Style selector
-                  const Text(
-                    'Style de voix',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ...VoiceStyle.values.map((style) {
-                    final isSelected = _config.style == style;
-                    return RadioListTile<VoiceStyle>(
-                      value: style,
-                      groupValue: _config.style,
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            _config.style = value;
-                            _updateConfig();
-                          });
+          // Generate button
+          if (widget.onGenerate != null)
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _textController.text.isEmpty || isGenerating
+                    ? null
+                    : () async {
+                        setState(() => isGenerating = true);
+                        await Future.delayed(const Duration(seconds: 2));
+                        if (widget.onGenerate != null) {
+                          widget.onGenerate!();
+                        }
+                        if (mounted) {
+                          setState(() => isGenerating = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('✅ Voix générée avec succès'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
                         }
                       },
-                      title: Row(
-                        children: [
-                          Icon(
-                            _getStyleIcon(style),
-                            color: isSelected ? Colors.purple : Colors.white70,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _getStyleLabel(style),
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : Colors.white70,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          ),
-                        ],
-                      ),
-                      subtitle: Text(
-                        _getStyleDescription(style),
-                        style: const TextStyle(color: Colors.white54, fontSize: 12),
-                      ),
-                      activeColor: Colors.purple,
-                      contentPadding: EdgeInsets.zero,
-                    );
-                  }),
-
-                  const SizedBox(height: 20),
-
-                  // Speed slider
-                  const Text(
-                    'Vitesse de lecture',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purple,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.speed, color: Colors.white54, size: 20),
-                      Expanded(
-                        child: Slider(
-                          value: _config.speed,
-                          min: 0.5,
-                          max: 2.0,
-                          divisions: 15,
-                          label: '${_config.speed.toStringAsFixed(1)}x',
-                          activeColor: Colors.purple,
-                          inactiveColor: Colors.grey[700],
-                          onChanged: (value) {
-                            setState(() {
-                              _config.speed = value;
-                              _updateConfig();
-                            });
-                          },
+                ),
+                icon: isGenerating
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
                         ),
-                      ),
-                      SizedBox(
-                        width: 50,
-                        child: Text(
-                          '${_config.speed.toStringAsFixed(1)}x',
-                          style: const TextStyle(
-                            color: Colors.purple,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.right,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Lent',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 11),
-                      ),
-                      Text(
-                        'Normal',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 11),
-                      ),
-                      Text(
-                        'Rapide',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 11),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Volume slider
-                  const Text(
-                    'Volume',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        _config.volume == 0
-                            ? Icons.volume_off
-                            : _config.volume < 0.5
-                                ? Icons.volume_down
-                                : Icons.volume_up,
-                        color: Colors.white54,
-                        size: 20,
-                      ),
-                      Expanded(
-                        child: Slider(
-                          value: _config.volume,
-                          min: 0.0,
-                          max: 1.0,
-                          divisions: 10,
-                          label: '${(_config.volume * 100).toInt()}%',
-                          activeColor: Colors.purple,
-                          inactiveColor: Colors.grey[700],
-                          onChanged: (value) {
-                            setState(() {
-                              _config.volume = value;
-                              _updateConfig();
-                            });
-                          },
-                        ),
-                      ),
-                      SizedBox(
-                        width: 50,
-                        child: Text(
-                          '${(_config.volume * 100).toInt()}%',
-                          style: const TextStyle(
-                            color: Colors.purple,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.right,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Preview button
-                  Center(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.play_arrow, color: Colors.purple),
-                      label: const Text(
-                        'Aperçu vocal',
-                        style: TextStyle(color: Colors.purple),
-                      ),
-                      onPressed: _previewVoice,
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.purple),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      ),
-                    ),
-                  ),
-                ],
+                      )
+                    : const Icon(Icons.auto_awesome),
+                label: Text(
+                  isGenerating ? 'Génération en cours...' : 'Générer la voix',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
-          ],
         ],
       ),
     );
   }
 
-  String _getLanguageLabel(VoiceLanguage lang) {
-    switch (lang) {
+  Widget _buildLanguageChip(String label, VoiceLanguage language) {
+    final isSelected = config.language == language;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        if (selected) {
+          setState(() {
+            config.language = language;
+          });
+          _updateConfig();
+        }
+      },
+      selectedColor: Colors.purple,
+      backgroundColor: Colors.grey[800],
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : Colors.grey[400],
+        fontSize: 13,
+      ),
+    );
+  }
+
+  Widget _buildStyleChip(String label, VoiceStyle style, IconData icon) {
+    final isSelected = config.style == style;
+    return ChoiceChip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: isSelected ? Colors.white : Colors.grey[400]),
+          const SizedBox(width: 6),
+          Text(label),
+        ],
+      ),
+      selected: isSelected,
+      onSelected: (selected) {
+        if (selected) {
+          setState(() {
+            config.style = style;
+          });
+          _updateConfig();
+        }
+      },
+      selectedColor: Colors.purple,
+      backgroundColor: Colors.grey[800],
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : Colors.grey[400],
+        fontSize: 13,
+      ),
+    );
+  }
+
+  String _getConfigSummary() {
+    final langName = _getLanguageName(config.language);
+    final styleName = _getStyleName(config.style);
+    final charCount = _textController.text.length;
+    
+    return 'Langue: $langName • Style: $styleName • $charCount caractères';
+  }
+
+  String _getLanguageName(VoiceLanguage language) {
+    switch (language) {
       case VoiceLanguage.french:
-        return '🇫🇷 Français';
+        return 'Français';
       case VoiceLanguage.englishUS:
-        return '🇺🇸 English (US)';
+        return 'English US';
       case VoiceLanguage.englishGB:
-        return '🇬🇧 English (UK)';
-      case VoiceLanguage.moore:
-        return '🌍 Mooré';
+        return 'English UK';
+      case VoiceLanguage.more:
+        return 'Mooré';
     }
   }
 
-  String _getStyleLabel(VoiceStyle style) {
+  String _getStyleName(VoiceStyle style) {
     switch (style) {
       case VoiceStyle.professional:
         return 'Professionnel';
       case VoiceStyle.fun:
-        return 'Amusant';
+        return 'Fun';
       case VoiceStyle.storytelling:
-        return 'Narratif';
+        return 'Storytelling';
     }
   }
 
-  String _getStyleDescription(VoiceStyle style) {
-    switch (style) {
-      case VoiceStyle.professional:
-        return 'Voix claire et posée, idéale pour contenu éducatif';
-      case VoiceStyle.fun:
-        return 'Voix dynamique et enjouée, parfaite pour contenu viral';
-      case VoiceStyle.storytelling:
-        return 'Voix expressive et captivante pour raconter des histoires';
-    }
-  }
-
-  IconData _getStyleIcon(VoiceStyle style) {
-    switch (style) {
-      case VoiceStyle.professional:
-        return Icons.business_center;
-      case VoiceStyle.fun:
-        return Icons.celebration;
-      case VoiceStyle.storytelling:
-        return Icons.auto_stories;
-    }
-  }
-
-  void _previewVoice() {
+  void _showHelp() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.grey[850],
-        title: const Row(
-          children: [
-            Icon(Icons.play_circle, color: Colors.purple),
-            SizedBox(width: 8),
-            Text('Aperçu vocal', style: TextStyle(color: Colors.white)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(color: Colors.purple),
-            const SizedBox(height: 16),
-            Text(
-              'Génération de l\'aperçu...',
-              style: TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Langue: ${_getLanguageLabel(_config.language)}',
-              style: const TextStyle(color: Colors.white60, fontSize: 12),
-            ),
-            Text(
-              'Style: ${_getStyleLabel(_config.style)}',
-              style: const TextStyle(color: Colors.white60, fontSize: 12),
-            ),
-            Text(
-              'Vitesse: ${_config.speed.toStringAsFixed(1)}x',
-              style: const TextStyle(color: Colors.white60, fontSize: 12),
-            ),
-          ],
+        title: const Text('💡 Aide TTS', style: TextStyle(color: Colors.white)),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Voix IA (Text-to-Speech)',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Convertit votre texte en voix naturelle avec Piper TTS.',
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Langues supportées:',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              SizedBox(height: 4),
+              Text('• Français (FR)', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              Text('• English US', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              Text('• English UK', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              Text('• Mooré (langues africaines)', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              SizedBox(height: 16),
+              Text(
+                'Styles de voix:',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              SizedBox(height: 4),
+              Text('• Professionnel: Ton neutre et clair', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              Text('• Fun: Ton enjoué et dynamique', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              Text('• Storytelling: Ton narratif', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              SizedBox(height: 16),
+              Text(
+                'Contrôles:',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              SizedBox(height: 4),
+              Text('• Vitesse: 0.5x (lent) à 2.0x (rapide)', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              Text('• Volume: 0% (muet) à 100% (max)', style: TextStyle(color: Colors.white70, fontSize: 12)),
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Fermer'),
+            child: const Text('Fermer', style: TextStyle(color: Colors.white70)),
           ),
         ],
       ),
     );
-
-    // Simulate preview generation
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🎤 Aperçu vocal joué avec succès!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    });
   }
 }
