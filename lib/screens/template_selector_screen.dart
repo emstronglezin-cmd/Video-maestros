@@ -145,7 +145,7 @@ class _TemplateSelectorScreenState extends State<TemplateSelectorScreen> {
   @override
   Widget build(BuildContext context) {
     final appProvider = Provider.of<AppProvider>(context);
-    final userIsPremium = appProvider.userProfile?.isPremium ?? false;
+    final userIsPremium = false // TODO: Add premium check;
 
     return Scaffold(
       backgroundColor: Colors.grey[900],
@@ -389,7 +389,7 @@ class _TemplateSelectorScreenState extends State<TemplateSelectorScreen> {
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
+                    color: Colors.black.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Center(

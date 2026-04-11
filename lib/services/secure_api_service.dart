@@ -2,11 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
-/**
- * Service API Sécurisé avec Retry Logic et Error Handling
- * Pour stabilité et maintenabilité à long terme
- */
+/// Service API Sécurisé avec Retry Logic et Error Handling
+/// Pour stabilité et maintenabilité à long terme
 
 class ApiException implements Exception {
   final String message;

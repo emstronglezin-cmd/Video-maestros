@@ -209,19 +209,7 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
       return _buildDefaultError(context);
     }
 
-    return ErrorWidget.builder = (FlutterErrorDetails details) {
-      final error = ErrorRecord(
-        type: ErrorType.flutter,
-        error: details.exception,
-        stackTrace: details.stack,
-        timestamp: DateTime.now(),
-      );
-
-      setState(() => _error = error);
-      widget.onError?.call(error);
-
-      return _buildDefaultError(context);
-    } as Widget;
+    return widget.child;
   }
 
   Widget _buildDefaultError(BuildContext context) {

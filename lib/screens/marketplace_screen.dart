@@ -159,7 +159,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
   @override
   Widget build(BuildContext context) {
     final appProvider = Provider.of<AppProvider>(context);
-    final userIsPremium = appProvider.userProfile?.isPremium ?? false;
+    final userIsPremium = false // TODO: Add premium check;
 
     return Scaffold(
       backgroundColor: Colors.grey[900],
@@ -393,7 +393,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
+                    color: Colors.black.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Center(
@@ -425,7 +425,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: Colors.purple.withOpacity(0.2),
+                      color: Colors.purple.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(Icons.shopping_bag, color: Colors.purple, size: 30),
