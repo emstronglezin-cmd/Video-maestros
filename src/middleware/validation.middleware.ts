@@ -89,7 +89,7 @@ export const marketplaceFiltersSchema = z.object({
  * Middleware de validation générique
  */
 export function validateRequest(schema: z.ZodSchema) {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (req: Request, res: Response,   next: NextFunction): Promise<void> => {
     try {
       // Valider body, query et params
       const validated = await schema.parseAsync({
@@ -174,7 +174,7 @@ export function checkUserRateLimit(userId: string, maxRequests: number, windowMs
 }
 
 export function userRateLimiter(maxRequests: number, windowMs: number) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, res: Response,   next: NextFunction): void => {
     const userId = (req as any).user?.uid;
 
     if (!userId) {
@@ -214,7 +214,7 @@ export function errorHandler(
   err: Error | AppError,
   req: Request,
   res: Response,
-  next: NextFunction
+    next: NextFunction
 ): void {
   if (err instanceof AppError) {
     logger.error('Operational error', {
@@ -251,7 +251,7 @@ export function errorHandler(
  * Async handler pour éviter try-catch répétitifs
  */
 export function asyncHandler(fn: Function) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, res: Response,   next: NextFunction): void => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 }

@@ -17,6 +17,16 @@ import {
   sanitizePath,
   disablePoweredBy,
 } from './middleware/security.middleware';
+import {
+  helmetConfig,
+  uploadRateLimiter,
+  sanitizeInputs,
+  detectSuspiciousActivity,
+  slowRequestProtection,
+  auditLog,
+} from './middleware/security.middleware';
+import { monitoringMiddleware, productionMonitor } from './utils/production-monitor';
+import { errorHandler } from './middleware/validation.middleware';
 import { initializeFirebase, verifyIdToken } from './middleware/firebase.middleware';
 
 dotenv.config();
@@ -101,20 +111,35 @@ export function createApp(): Express {
 
   // 1. Security headers and CORS
   app.use(disablePoweredBy);
-  app.use(helmetMiddleware);
+  app.use(helmetConfig);
   app.use(corsMiddleware);
 
   // 2. Body parsing with limits
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-  // 3. Request logging
+  // 3. Request monitoring (production)
+  app.use(monitoringMiddleware);
+
+  // 4. Request logging
   app.use(requestLogger);
 
-  // 4. Global rate limiting
+  // 5. Input sanitization
+  app.use(sanitizeInputs);
+
+  // 6. Suspicious activity detection
+  app.use(detectSuspiciousActivity);
+
+  // 7. Slow request protection
+  app.use(slowRequestProtection);
+
+  // 8. Audit logging
+  app.use(auditLog);
+
+  // 9. Global rate limiting
   app.use(globalRateLimiter);
 
-  // 5. Path sanitization
+  // 10. Path sanitization
   app.use(sanitizePath);
 
   // 6. Static files (outputs)
@@ -148,7 +173,7 @@ export function createApp(): Express {
   // 8. Upload endpoint with strict rate limiting and auth
   app.post(
     '/api/upload',
-    strictRateLimiter,
+    uploadRateLimiter,
     verifyIdToken,
     upload.array('files', 10),
     validateMimetype,
@@ -213,7 +238,10 @@ export function createApp(): Express {
     });
   });
 
-  // 14. Global error handler
+  // 14. Enhanced error handler
+  app.use(errorHandler as any);
+
+  // 15. Fallback error handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction): void => {
     logger.error('❌ Global error handler:', err);
 

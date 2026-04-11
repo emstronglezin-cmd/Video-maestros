@@ -1,19 +1,28 @@
 import { Request, Response, NextFunction } from 'express';
-import helmet from 'helmet';
-import cors from 'cors';
-import rateLimit from 'express-rate-limit';
 import { logger } from '../utils/logger';
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
 
 /**
- * Helmet configuration for security headers
+ * 🔒 MIDDLEWARE DE SÉCURITÉ RENFORCÉE
+ * Protection complète contre les attaques courantes
  */
-export const helmetMiddleware = helmet({
+
+/**
+ * Configuration Helmet pour sécurité HTTP
+ */
+export const helmetConfig = helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
     },
   },
   hsts: {
@@ -21,158 +30,285 @@ export const helmetMiddleware = helmet({
     includeSubDomains: true,
     preload: true,
   },
+  noSniff: true,
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 });
 
 /**
- * CORS configuration - strict production settings
- */
-export const corsMiddleware = cors({
-  origin: (origin, callback) => {
-    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
-      'http://localhost:3000',
-      'http://localhost:5060',
-    ];
-
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) {
-      return callback(null, true);
-    }
-
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      logger.warn(`❌ Blocked CORS request from: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  maxAge: 86400, // 24 hours
-});
-
-/**
- * Global rate limiter - prevents brute force attacks
+ * Rate limiting global par IP
  */
 export const globalRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Max 100 requests per windowMs
+  max: 1000, // 1000 requêtes max par IP
   message: {
     success: false,
-    error: 'Too many requests, please try again later',
+    error: 'Too many requests from this IP, please try again later.',
   },
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
-    logger.warn(`⚠️  Rate limit exceeded for IP: ${req.ip}`);
+    logger.warn('Global rate limit exceeded', {
+      ip: req.ip,
+      path: req.path,
+      userAgent: req.get('user-agent'),
+    });
     res.status(429).json({
       success: false,
-      error: 'Too many requests, please try again later',
+      error: 'Too many requests',
+      retryAfter: 900,
     });
   },
 });
 
 /**
- * Stricter rate limiter for sensitive endpoints (auth, uploads)
+ * Rate limiting strict pour uploads
  */
-export const strictRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // Max 20 requests per windowMs
-  skipSuccessfulRequests: false,
+export const uploadRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // 10 uploads par minute
   message: {
     success: false,
-    error: 'Too many attempts, please try again later',
+    error: 'Upload rate limit exceeded. Maximum 10 uploads per minute.',
   },
+  skipSuccessfulRequests: false,
   handler: (req, res) => {
-    logger.warn(`⚠️  Strict rate limit exceeded for IP: ${req.ip}`);
+    logger.warn('Upload rate limit exceeded', {
+      ip: req.ip,
+      user: (req as any).user?.uid,
+    });
     res.status(429).json({
       success: false,
-      error: 'Too many attempts, please try again later',
+      error: 'Too many upload requests',
+      retryAfter: 60,
     });
   },
 });
 
 /**
- * Validate file mimetype to prevent malicious uploads
+ * Rate limiting pour API endpoints critiques
  */
-export const validateMimetype = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
-  if (!req.file && !req.files) {
-    return next();
-  }
+export const criticalRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30, // 30 requêtes par minute
+  skipSuccessfulRequests: false,
+});
 
-  const allowedMimetypes = [
-    // Images
-    'image/jpeg',
-    'image/jpg',
-    'image/png',
-    'image/gif',
-    // Videos
-    'video/mp4',
-    'video/quicktime',
-    'video/x-msvideo',
-    'video/x-matroska',
-    // Audio
-    'audio/mpeg',
-    'audio/wav',
-    'audio/flac',
+/**
+ * Validation et nettoyage des entrées
+ */
+export function sanitizeInputs(req: Request, _res: Response, next: NextFunction): void {
+  try {
+    // Nettoyer les query parameters
+    if (req.query) {
+      Object.keys(req.query).forEach(key => {
+        if (typeof req.query[key] === 'string') {
+          // Supprimer les caractères dangereux
+          req.query[key] = (req.query[key] as string)
+            .replace(/[<>\"']/g, '')
+            .trim();
+        }
+      });
+    }
+
+    // Nettoyer les body parameters (sauf les chemins de fichiers légitimes)
+    if (req.body && typeof req.body === 'object') {
+      Object.keys(req.body).forEach(key => {
+        if (typeof req.body[key] === 'string' && !key.toLowerCase().includes('path')) {
+          req.body[key] = req.body[key]
+            .replace(/[<>]/g, '')
+            .trim();
+        }
+      });
+    }
+
+    next();
+  } catch (error) {
+    logger.error('Input sanitization error', { error });
+    next();
+  }
+}
+
+/**
+ * Détection d'activité suspecte
+ */
+const suspiciousActivityMap = new Map<string, {
+  count: number;
+  firstSeen: number;
+  lastSeen: number;
+  violations: string[];
+}>();
+
+export function detectSuspiciousActivity(req: Request, _res: Response, next: NextFunction): void {
+  const identifier = (req as any).user?.uid || req.ip || 'unknown';
+  const now = Date.now();
+  
+  const activity = suspiciousActivityMap.get(identifier) || {
+    count: 0,
+    firstSeen: now,
+    lastSeen: now,
+    violations: [],
+  };
+
+  // Vérifier les patterns suspects
+  const suspiciousPatterns = [
+    { pattern: /../, field: 'path-traversal', value: req.path },
+    { pattern: /<script>/i, field: 'xss-attempt', value: JSON.stringify(req.body) },
+    { pattern: /union.*select/i, field: 'sql-injection', value: JSON.stringify(req.query) },
+    { pattern: /\$\{.*\}/i, field: 'template-injection', value: JSON.stringify(req.body) },
   ];
 
-  const files = req.files
-    ? Array.isArray(req.files)
-      ? req.files
-      : Object.values(req.files).flat()
-    : req.file
-    ? [req.file]
-    : [];
+  let isViolation = false;
+  suspiciousPatterns.forEach(({ pattern, field, value }) => {
+    if (pattern.test(value)) {
+      activity.violations.push(field);
+      isViolation = true;
+      logger.warn('Suspicious activity detected', {
+        identifier,
+        violation: field,
+        path: req.path,
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+    }
+  });
 
-  for (const file of files) {
-    if (!allowedMimetypes.includes(file.mimetype)) {
-      logger.warn(`❌ Invalid mimetype: ${file.mimetype} from IP: ${req.ip}`);
-      return res.status(400).json({
+  if (isViolation) {
+    activity.count++;
+    activity.lastSeen = now;
+    suspiciousActivityMap.set(identifier, activity);
+
+    // Bloquer si trop de violations
+    if (activity.count > 5) {
+      logger.error('Suspicious user blocked', {
+        identifier,
+        violations: activity.violations,
+        count: activity.count,
+      });
+      res.status(403).json({
         success: false,
-        error: `Invalid file type: ${file.mimetype}`,
-      }) as any;
+        error: 'Access denied due to suspicious activity',
+      });
+      return;
     }
   }
 
   next();
-};
+}
 
 /**
- * Block path traversal attacks
+ * Nettoyage périodique des maps de rate limiting
  */
-export const sanitizePath = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
-  const params = { ...req.params, ...req.query, ...req.body };
+setInterval(() => {
+  const now = Date.now();
+  const expirationTime = 30 * 60 * 1000; // 30 minutes
 
-  for (const [key, value] of Object.entries(params)) {
-    if (typeof value === 'string' && (value.includes('..') || value.includes('~'))) {
-      logger.warn(`⚠️  Path traversal attempt detected: ${key}=${value} from IP: ${req.ip}`);
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid path',
-      }) as any;
+  suspiciousActivityMap.forEach((activity, key) => {
+    if (now - activity.lastSeen > expirationTime) {
+      suspiciousActivityMap.delete(key);
     }
+  });
+}, 10 * 60 * 1000); // Nettoyer toutes les 10 minutes
+
+/**
+ * Validation des tailles de fichiers avant upload
+ */
+export function validateFileSize(maxSize: number) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const contentLength = req.get('content-length');
+    
+    if (contentLength && parseInt(contentLength) > maxSize) {
+      logger.warn('File size exceeded', {
+        size: contentLength,
+        maxSize,
+        user: (req as any).user?.uid,
+      });
+      res.status(413).json({
+        success: false,
+        error: 'File too large',
+        maxSize: `${maxSize / (1024 * 1024)} MB`,
+      });
+      return;
+    }
+
+    next();
+  };
+}
+
+/**
+ * Protection contre les requêtes lentes (Slowloris)
+ */
+export function slowRequestProtection(req: Request, res: Response, next: NextFunction): void {
+  const timeout = 30000; // 30 secondes max
+  const timer = setTimeout(() => {
+    logger.warn('Slow request timeout', {
+      path: req.path,
+      ip: req.ip,
+      method: req.method,
+    });
+    res.status(408).json({
+      success: false,
+      error: 'Request timeout',
+    });
+  }, timeout);
+
+  res.on('finish', () => clearTimeout(timer));
+  res.on('close', () => clearTimeout(timer));
+
+  next();
+}
+
+/**
+ * Logging des requêtes sensibles
+ */
+export function auditLog(req: Request, res: Response, next: NextFunction): void {
+  const sensitiveEndpoints = [
+    '/api/users/signup',
+    '/api/users/login',
+    '/api/storage/upload',
+    '/api/social/connect',
+  ];
+
+  if (sensitiveEndpoints.some(endpoint => req.path.includes(endpoint))) {
+    logger.info('Sensitive endpoint accessed', {
+      path: req.path,
+      method: req.method,
+      user: (req as any).user?.uid || 'anonymous',
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+      timestamp: new Date().toISOString(),
+    });
   }
 
   next();
-};
+}
 
 /**
- * Disable x-powered-by header
+ * Validation CORS stricte
  */
-export const disablePoweredBy = (
-  _req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
-  res.removeHeader('X-Powered-By');
+export function strictCorsValidation(req: Request, _res: Response, next: NextFunction): void {
+  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
+  const origin = req.get('origin');
+
+  if (origin && allowedOrigins.length > 0 && !allowedOrigins.includes(origin)) {
+    logger.warn('CORS violation', {
+      origin,
+      allowedOrigins,
+      path: req.path,
+    });
+  }
+
   next();
-};
+}
+
+/**
+ * Health check endpoint (non authentifié)
+ */
+export function healthCheck(_req: Request, res: Response): void {
+  res.status(200).json({
+    success: true,
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+  });
+}
