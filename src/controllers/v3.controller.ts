@@ -5,6 +5,21 @@
 
 import { Router, Request, Response } from 'express';
 import { verifyIdToken } from '../middleware/firebase.middleware';
+import { 
+  validateRequest, 
+  asyncHandler, 
+  userRateLimiter,
+  captionGenerateSchema,
+  captionApplySchema,
+  templateIdSchema,
+  batchAddJobsSchema,
+  socialConnectSchema,
+  socialPostSchema,
+  marketplaceEffectIdSchema,
+  marketplacePackIdSchema,
+  marketplaceFiltersSchema,
+  AppError,
+} from '../middleware/validation.middleware';
 import { captionService } from '../services/caption.service';
 import { templateService } from '../services/template.service';
 import { batchService } from '../services/batch.service';
@@ -22,29 +37,21 @@ const router = Router();
  * POST /api/caption/generate
  * Génère des sous-titres automatiques avec Whisper
  */
-router.post('/caption/generate', verifyIdToken, async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { videoPath, language = 'auto', model = 'base' } = req.body;
-
-    if (!videoPath) {
-      return res.status(400).json({ error: 'videoPath is required' });
-    }
-
+router.post(
+  '/caption/generate',
+  verifyIdToken,
+  userRateLimiter(10, 60000), // 10 requests per minute
+  validateRequest(captionGenerateSchema),
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { videoPath, language, model } = req.body;
     const result = await captionService.generateCaptions(videoPath, language, model);
 
     res.json({
       success: true,
       data: result
     });
-
-  } catch (error) {
-    logger.error('Caption generation failed', { error });
-    res.status(500).json({ 
-      error: 'Caption generation failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
+  })
+);
 
 /**
  * POST /api/caption/apply
