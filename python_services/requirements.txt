@@ -1,0 +1,26 @@
+# 🐍 Python Dependencies - Open Source Solutions
+
+# TTS (Text-to-Speech)
+piper-tts==1.2.0
+onnxruntime==1.19.2
+
+# Speech Recognition
+faster-whisper==1.1.0
+torch==2.5.1
+transformers==4.47.1
+
+# Audio Processing
+pydub==0.25.1
+librosa==0.10.2.post1
+
+# Flask pour micro-services
+Flask==3.1.0
+Flask-CORS==5.0.0
+
+# Utilitaires
+numpy==2.2.1
+scipy==1.15.0
+soundfile==0.12.1
+
+# Redis client Python
+redis==5.2.1
