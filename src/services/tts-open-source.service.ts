@@ -3,7 +3,6 @@ import path from 'path';
 import fs from 'fs/promises';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger';
-import FormData from 'form-data';
 
 /**
  * 🎤 TTS SERVICE - Wrapper pour Piper TTS (Open Source)

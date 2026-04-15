@@ -10,23 +10,6 @@ import {
   asyncHandler, 
   userRateLimiter,
   captionGenerateSchema,
-  captionApplySchema,
-  templateIdSchema,
-  batchAddJobsSchema,
-  socialConnectSchema,
-  socialPostSchema,
-  marketplaceEffectIdSchema,
-  marketplacePackIdSchema,
-  marketplaceFiltersSchema,
-  AppError,
-} from '../middleware/validation.middleware';
-import { captionService } from '../services/caption.service';
-import { templateService } from '../services/template.service';
-import { batchService } from '../services/batch.service';
-import { socialExportService } from '../services/social-export.service';
-import { marketplaceService } from '../services/marketplace.service';
-import { logger } from '../utils/logger';
-
 const router = Router();
 
 // =======================
@@ -62,7 +45,7 @@ router.post('/caption/apply', verifyIdToken, async (req: Request, res: Response)
     const { inputVideoPath, srtPath, outputVideoPath, style } = req.body;
 
     if (!inputVideoPath || !srtPath || !outputVideoPath) {
-      return res.status(400).json({ error: 'Missing required parameters' });
+      res.status(400).json({ error: 'Missing required parameters' });
     }
 
     await captionService.applyStylizedCaptions(inputVideoPath, srtPath, outputVideoPath, style);
@@ -120,13 +103,13 @@ router.get('/templates', verifyIdToken, async (req: Request, res: Response): Pro
  * GET /api/templates/:id
  * Récupère un template par ID
  */
-router.get('/templates/:id', verifyIdToken, async (req: Request, res: Response) => {
+router.get('/templates/:id', verifyIdToken, async (req: Request, res: Response): Promise<void> => {
   try {
     const userIsPremium = (req as any).user?.isPremium || false;
     const template = templateService.getTemplateById(req.params.id, userIsPremium);
 
     if (!template) {
-      return res.status(404).json({ error: 'Template not found' });
+      res.status(404).json({ error: 'Template not found' });
     }
 
     res.json({
@@ -189,7 +172,7 @@ router.post('/batch/:sessionId/add-jobs', verifyIdToken, async (req: Request, re
     const { videoConfigs } = req.body;
 
     if (!videoConfigs || !Array.isArray(videoConfigs)) {
-      return res.status(400).json({ error: 'videoConfigs array is required' });
+      res.status(400).json({ error: 'videoConfigs array is required' });
     }
 
     const jobIds = await batchService.addJobsToSession(sessionId, userId, isPremium, videoConfigs);
@@ -212,7 +195,7 @@ router.post('/batch/:sessionId/add-jobs', verifyIdToken, async (req: Request, re
  * GET /api/batch/:sessionId/status
  * Récupère l'état d'une session batch
  */
-router.get('/batch/:sessionId/status', verifyIdToken, async (req: Request, res: Response) => {
+router.get('/batch/:sessionId/status', verifyIdToken, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.uid;
     const { sessionId } = req.params;
@@ -220,7 +203,7 @@ router.get('/batch/:sessionId/status', verifyIdToken, async (req: Request, res: 
     const status = await batchService.getBatchSessionStatus(sessionId, userId);
 
     if (!status) {
-      return res.status(404).json({ error: 'Batch session not found' });
+      res.status(404).json({ error: 'Batch session not found' });
     }
 
     res.json({
@@ -262,7 +245,7 @@ router.post('/batch/:sessionId/cancel', verifyIdToken, async (req: Request, res:
  * GET /api/batch/queue-stats
  * Statistiques de la queue batch
  */
-router.get('/batch/queue-stats', verifyIdToken, async (req: Request, res: Response) => {
+router.get('/batch/queue-stats', verifyIdToken, async (req: Request, res: Response): Promise<void> => {
   try {
     const stats = await batchService.getQueueStats();
     res.json({ success: true, data: stats });
@@ -279,13 +262,13 @@ router.get('/batch/queue-stats', verifyIdToken, async (req: Request, res: Respon
  * POST /api/social/connect/tiktok
  * Connecte un compte TikTok
  */
-router.post('/social/connect/tiktok', verifyIdToken, async (req: Request, res: Response) => {
+router.post('/social/connect/tiktok', verifyIdToken, async (_req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.uid;
     const { authCode } = req.body;
 
     if (!authCode) {
-      return res.status(400).json({ error: 'authCode is required' });
+      res.status(400).json({ error: 'authCode is required' });
     }
 
     const account = await socialExportService.connectTikTokAccount(userId, authCode);
@@ -311,13 +294,13 @@ router.post('/social/connect/tiktok', verifyIdToken, async (req: Request, res: R
  * POST /api/social/connect/instagram
  * Connecte un compte Instagram
  */
-router.post('/social/connect/instagram', verifyIdToken, async (req: Request, res: Response) => {
+router.post('/social/connect/instagram', verifyIdToken, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.uid;
     const { authCode, redirectUri } = req.body;
 
     if (!authCode || !redirectUri) {
-      return res.status(400).json({ error: 'authCode and redirectUri are required' });
+      res.status(400).json({ error: 'authCode and redirectUri are required' });
     }
 
     const account = await socialExportService.connectInstagramAccount(userId, authCode, redirectUri);
@@ -343,19 +326,19 @@ router.post('/social/connect/instagram', verifyIdToken, async (req: Request, res
  * POST /api/social/post/tiktok
  * Publie une vidéo sur TikTok
  */
-router.post('/social/post/tiktok', verifyIdToken, async (req: Request, res: Response) => {
+router.post('/social/post/tiktok', verifyIdToken, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.uid;
     const { videoPath, config } = req.body;
 
     if (!videoPath || !config) {
-      return res.status(400).json({ error: 'videoPath and config are required' });
+      res.status(400).json({ error: 'videoPath and config are required' });
     }
 
     const result = await socialExportService.postToTikTok(userId, videoPath, config);
 
     if (!result.success) {
-      return res.status(400).json({ error: result.error });
+      res.status(400).json({ error: result.error });
     }
 
     res.json({
@@ -373,19 +356,19 @@ router.post('/social/post/tiktok', verifyIdToken, async (req: Request, res: Resp
  * POST /api/social/post/instagram
  * Publie un Reel sur Instagram
  */
-router.post('/social/post/instagram', verifyIdToken, async (req: Request, res: Response) => {
+router.post('/social/post/instagram', verifyIdToken, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.uid;
     const { videoPath, thumbnailPath, config } = req.body;
 
     if (!videoPath || !config) {
-      return res.status(400).json({ error: 'videoPath and config are required' });
+      res.status(400).json({ error: 'videoPath and config are required' });
     }
 
     const result = await socialExportService.postToInstagram(userId, videoPath, thumbnailPath, config);
 
     if (!result.success) {
-      return res.status(400).json({ error: result.error });
+      res.status(400).json({ error: result.error });
     }
 
     res.json({
@@ -427,13 +410,13 @@ router.get('/social/accounts', verifyIdToken, async (req: Request, res: Response
  * DELETE /api/social/disconnect/:platform
  * Déconnecte un compte social
  */
-router.delete('/social/disconnect/:platform', verifyIdToken, async (req: Request, res: Response) => {
+router.delete('/social/disconnect/:platform', verifyIdToken, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.uid;
     const platform = req.params.platform as 'tiktok' | 'instagram';
 
     if (!['tiktok', 'instagram'].includes(platform)) {
-      return res.status(400).json({ error: 'Invalid platform' });
+      res.status(400).json({ error: 'Invalid platform' });
     }
 
     const success = socialExportService.disconnectAccount(userId, platform);

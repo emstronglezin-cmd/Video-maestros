@@ -46,13 +46,13 @@ export const globalRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  handler: (req, res) => {
+  handler: (req, _res) => {
     logger.warn('Global rate limit exceeded', {
       ip: req.ip,
       path: req.path,
       userAgent: req.get('user-agent'),
     });
-    res.status(429).json({
+    _res.status(429).json({
       success: false,
       error: 'Too many requests',
       retryAfter: 900,
@@ -71,12 +71,12 @@ export const uploadRateLimiter = rateLimit({
     error: 'Upload rate limit exceeded. Maximum 10 uploads per minute.',
   },
   skipSuccessfulRequests: false,
-  handler: (req, res) => {
+  handler: (req, _res) => {
     logger.warn('Upload rate limit exceeded', {
       ip: req.ip,
       user: (req as any).user?.uid,
     });
-    res.status(429).json({
+    _res.status(429).json({
       success: false,
       error: 'Too many upload requests',
       retryAfter: 60,
@@ -102,7 +102,7 @@ export function sanitizeInputs(req: Request, _res: Response, next: NextFunction)
     if (req.query) {
       Object.keys(req.query).forEach(key => {
         if (typeof req.query[key] === 'string') {
-          // Supprimer les caractères dangereux
+          // Supprimer les caractè_res dangereux
           req.query[key] = (req.query[key] as string)
             .replace(/[<>\"']/g, '')
             .trim();
@@ -184,7 +184,7 @@ export function detectSuspiciousActivity(req: Request, _res: Response, next: Nex
         violations: activity.violations,
         count: activity.count,
       });
-      res.status(403).json({
+      _res.status(403).json({
         success: false,
         error: 'Access denied due to suspicious activity',
       });
@@ -213,7 +213,7 @@ setInterval(() => {
  * Validation des tailles de fichiers avant upload
  */
 export function validateFileSize(maxSize: number) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
     const contentLength = req.get('content-length');
     
     if (contentLength && parseInt(contentLength) > maxSize) {
@@ -222,7 +222,7 @@ export function validateFileSize(maxSize: number) {
         maxSize,
         user: (req as any).user?.uid,
       });
-      res.status(413).json({
+      _res.status(413).json({
         success: false,
         error: 'File too large',
         maxSize: `${maxSize / (1024 * 1024)} MB`,
@@ -237,7 +237,7 @@ export function validateFileSize(maxSize: number) {
 /**
  * Protection contre les requêtes lentes (Slowloris)
  */
-export function slowRequestProtection(req: Request, res: Response, next: NextFunction): void {
+export function slowRequestProtection(req: Request, _res: Response, next: NextFunction): void {
   const timeout = 30000; // 30 secondes max
   const timer = setTimeout(() => {
     logger.warn('Slow request timeout', {
@@ -245,14 +245,14 @@ export function slowRequestProtection(req: Request, res: Response, next: NextFun
       ip: req.ip,
       method: req.method,
     });
-    res.status(408).json({
+    _res.status(408).json({
       success: false,
       error: 'Request timeout',
     });
   }, timeout);
 
-  res.on('finish', () => clearTimeout(timer));
-  res.on('close', () => clearTimeout(timer));
+  _res.on('finish', () => clearTimeout(timer));
+  _res.on('close', () => clearTimeout(timer));
 
   next();
 }
@@ -260,7 +260,7 @@ export function slowRequestProtection(req: Request, res: Response, next: NextFun
 /**
  * Logging des requêtes sensibles
  */
-export function auditLog(req: Request, res: Response, next: NextFunction): void {
+export function auditLog(req: Request, _res: Response, next: NextFunction): void {
   const sensitiveEndpoints = [
     '/api/users/signup',
     '/api/users/login',
@@ -303,8 +303,8 @@ export function strictCorsValidation(req: Request, _res: Response, next: NextFun
 /**
  * Health check endpoint (non authentifié)
  */
-export function healthCheck(_req: Request, res: Response): void {
-  res.status(200).json({
+export function healthCheck(_req: Request, _res: Response): void {
+  _res.status(200).json({
     success: true,
     status: 'healthy',
     timestamp: new Date().toISOString(),

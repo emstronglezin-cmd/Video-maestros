@@ -9,13 +9,8 @@ import { StorageController } from './modules/storage/storage.controller';
 import v3Controller from './controllers/v3.controller';
 import { logger, requestLogger } from './utils/logger';
 import {
-  helmetMiddleware,
   corsMiddleware,
   globalRateLimiter,
-  strictRateLimiter,
-  validateMimetype,
-  sanitizePath,
-  disablePoweredBy,
 } from './middleware/security.middleware';
 import {
   helmetConfig,
@@ -25,7 +20,6 @@ import {
   slowRequestProtection,
   auditLog,
 } from './middleware/security.middleware';
-import { monitoringMiddleware, productionMonitor } from './utils/production-monitor';
 import { errorHandler } from './middleware/validation.middleware';
 import { initializeFirebase, verifyIdToken } from './middleware/firebase.middleware';
 
@@ -110,7 +104,6 @@ export function createApp(): Express {
   const app = express();
 
   // 1. Security headers and CORS
-  app.use(disablePoweredBy);
   app.use(helmetConfig);
   app.use(corsMiddleware);
 
@@ -140,7 +133,6 @@ export function createApp(): Express {
   app.use(globalRateLimiter);
 
   // 10. Path sanitization
-  app.use(sanitizePath);
 
   // 6. Static files (outputs)
   app.use('/outputs', express.static(OUTPUT_DIR));
@@ -176,7 +168,6 @@ export function createApp(): Express {
     uploadRateLimiter,
     verifyIdToken,
     upload.array('files', 10),
-    validateMimetype,
     async (req: Request, res: Response): Promise<void> => {
       try {
         const files = req.files as Express.Multer.File[];
