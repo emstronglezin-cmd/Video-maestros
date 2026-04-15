@@ -24,6 +24,7 @@ class AppProvider with ChangeNotifier {
   String _selectedResolution = '1080';
 
   // Getters
+  ApiService get apiService => _apiService;
   List<File> get selectedFiles => _selectedFiles;
   String get script => _script;
   Timeline? get timeline => _timeline;

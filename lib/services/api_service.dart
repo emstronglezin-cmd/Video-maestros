@@ -198,4 +198,40 @@ class ApiService {
       return false;
     }
   }
+
+  /// Génère du TTS avec Piper
+  Future<Map<String, dynamic>> generateTTS({
+    required String text,
+    required String language,
+    required String style,
+    required double speed,
+    required double volume,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/v3/tts/generate'),
+        headers: _getHeaders(),
+        body: json.encode({
+          'text': text,
+          'language': language,
+          'style': style,
+          'speed': speed,
+          'volume': volume,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('TTS génération échouée: ${response.body}');
+      }
+
+      final data = json.decode(response.body);
+      if (data['success'] != true) {
+        throw Exception(data['error'] ?? 'TTS génération échouée');
+      }
+
+      return data['data'];
+    } catch (e) {
+      throw Exception('Erreur TTS: $e');
+    }
+  }
 }

@@ -144,8 +144,7 @@ class _TemplateSelectorScreenState extends State<TemplateSelectorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final appProvider = Provider.of<AppProvider>(context);
-    final userIsPremium = false // TODO: Add premium check;
+    final userIsPremium = false; // All features are free (Open Source)
 
     return Scaffold(
       backgroundColor: Colors.grey[900],
