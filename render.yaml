@@ -1,0 +1,223 @@
+# 🚀 Render.com Configuration - Video Maestro V3 Open Source
+# Tous les services sur un seul compte Render
+
+services:
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 📦 Service 1: Backend Node.js + Python Services + Redis
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  - type: web
+    name: video-maestro-backend
+    env: node
+    region: oregon
+    plan: starter  # Gratuit avec 512 MB RAM
+    branch: main
+    rootDir: video-editor-backend
+    
+    buildCommand: |
+      echo "📦 Installation des dépendances..."
+      
+      # Node.js dependencies
+      npm ci
+      
+      # Python 3.11 + pip
+      apt-get update
+      apt-get install -y python3 python3-pip python3-venv
+      
+      # FFmpeg (crucial pour vidéo)
+      apt-get install -y ffmpeg
+      
+      # Whisper.cpp dependencies
+      apt-get install -y wget git build-essential
+      
+      # Redis server
+      apt-get install -y redis-server
+      
+      # Python virtual environment
+      python3 -m venv /opt/render/project/src/venv
+      source /opt/render/project/src/venv/bin/activate
+      
+      # Python services
+      pip install --upgrade pip
+      pip install -r python_services/requirements.txt
+      
+      # Télécharger modèles Piper TTS (base)
+      mkdir -p ~/.local/share/piper/models
+      wget -q https://huggingface.co/rhasspy/piper-voices/resolve/main/en_US-lessac-medium.onnx \
+           -O ~/.local/share/piper/models/en_US-lessac-medium.onnx
+      wget -q https://huggingface.co/rhasspy/piper-voices/resolve/main/en_US-lessac-medium.onnx.json \
+           -O ~/.local/share/piper/models/en_US-lessac-medium.onnx.json
+      
+      # Télécharger modèle Whisper (base)
+      python3 -c "from faster_whisper import WhisperModel; WhisperModel('base', device='cpu', compute_type='int8')"
+      
+      # Build TypeScript
+      npm run build
+      
+      echo "✅ Build terminé"
+    
+    startCommand: |
+      echo "🚀 Démarrage des services..."
+      
+      # Démarrer Redis en arrière-plan
+      redis-server --daemonize yes --bind 127.0.0.1 --port 6379
+      
+      # Activer venv Python
+      source /opt/render/project/src/venv/bin/activate
+      
+      # Démarrer services Python en arrière-plan
+      python3 python_services/piper_tts_service.py > logs/tts.log 2>&1 &
+      python3 python_services/faster_whisper_service.py > logs/whisper.log 2>&1 &
+      
+      # Attendre que les services Python démarrent
+      sleep 5
+      
+      # Démarrer Node.js backend
+      npm start
+    
+    envVars:
+      # Node.js
+      - key: NODE_ENV
+        value: production
+      
+      - key: PORT
+        value: 3000
+      
+      # Directories
+      - key: UPLOAD_DIR
+        value: /opt/render/project/src/uploads
+      
+      - key: OUTPUT_DIR
+        value: /opt/render/project/src/outputs
+      
+      # Redis (local)
+      - key: REDIS_HOST
+        value: 127.0.0.1
+      
+      - key: REDIS_PORT
+        value: 6379
+      
+      # Python Services (local)
+      - key: TTS_SERVICE_URL
+        value: http://localhost:5001
+      
+      - key: WHISPER_SERVICE_URL
+        value: http://localhost:5002
+      
+      # Firebase (depuis Render dashboard)
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      
+      # CORS
+      - key: ALLOWED_ORIGINS
+        value: https://video-maestro-web.onrender.com
+    
+    # Disk storage pour uploads/outputs
+    disk:
+      name: video-maestro-storage
+      mountPath: /opt/render/project/src
+      sizeGB: 10  # 10 GB gratuit
+    
+    # Health check
+    healthCheckPath: /api/health
+    
+    # Auto-deploy
+    autoDeploy: true
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 📱 Service 2: Flutter Web (Static Site)
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  - type: web
+    name: video-maestro-web
+    env: static
+    region: oregon
+    plan: starter  # Gratuit
+    branch: flutter
+    rootDir: .
+    
+    buildCommand: |
+      echo "🌐 Build Flutter Web..."
+      
+      # Flutter est pré-installé sur Render
+      flutter --version
+      
+      # Clean + get dependencies
+      flutter clean
+      flutter pub get
+      
+      # Build web (release mode)
+      flutter build web --release --dart-define=API_URL=https://video-maestro-backend.onrender.com
+      
+      echo "✅ Flutter Web build terminé"
+    
+    staticPublishPath: build/web
+    
+    # Headers pour Flutter Web
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=3600
+      
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+      
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+    
+    # Routes (SPA)
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    
+    # Auto-deploy
+    autoDeploy: true
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🗄️ Databases (optionnel - Redis déjà inclus dans backend)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# databases: []  # Redis auto-hébergé dans le service backend
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 📝 Notes de déploiement
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 
+# 1. Pousser le code sur GitHub
+#    - Backend: branche 'main'
+#    - Flutter: branche 'flutter'
+#
+# 2. Créer compte Render.com (gratuit)
+#
+# 3. Connecter GitHub repository
+#
+# 4. Ajouter les variables d'environnement Firebase dans Render Dashboard:
+#    - FIREBASE_PROJECT_ID
+#    - FIREBASE_PRIVATE_KEY (JSON escapé)
+#    - FIREBASE_CLIENT_EMAIL
+#
+# 5. Déployer automatiquement via render.yaml
+#
+# 6. URLs après déploiement:
+#    - Backend API: https://video-maestro-backend.onrender.com
+#    - Frontend Web: https://video-maestro-web.onrender.com
+#
+# 7. Cold start: ~30 secondes (plan gratuit)
+#
+# 8. Limitations plan gratuit:
+#    - 512 MB RAM par service
+#    - 10 GB disk storage
+#    - Inactif après 15 min (redémarre automatiquement)
+#    - 750 heures/mois gratuites
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
