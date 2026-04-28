@@ -1,38 +1,309 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
-
-  <!-- iOS meta tags & icons -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  
+  <!-- SEO & Description -->
+  <meta name="description" content="Video Maestro - Application de montage vidéo automatique avec intelligence artificielle. Créez des vidéos professionnelles en quelques clics.">
+  <meta name="keywords" content="video editing, montage vidéo, IA, intelligence artificielle, video maker">
+  <meta name="author" content="Video Maestro">
+  
+  <!-- PWA Configuration -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="video_maestro">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Video Maestro">
+  <meta name="theme-color" content="#667EEA">
+  <meta name="msapplication-TileColor" content="#667EEA">
+  
+  <!-- iOS Icons -->
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
+  <link rel="apple-touch-icon" sizes="152x152" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" sizes="167x167" href="icons/Icon-192.png">
+  
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="shortcut icon" type="image/png" href="favicon.png"/>
 
-  <title>video_maestro</title>
+  <title>Video Maestro - Montage Vidéo IA</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Splash Screen personnalisé */
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    }
+
+    .loading-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      z-index: 9999;
+      opacity: 1;
+      transition: opacity 0.5s ease-out;
+    }
+
+    .loading-container.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .logo {
+      width: 120px;
+      height: 120px;
+      background: white;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 30px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .logo-text {
+      font-size: 48px;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .app-name {
+      font-size: 32px;
+      font-weight: bold;
+      color: white;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .app-subtitle {
+      font-size: 16px;
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 40px;
+      text-align: center;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    /* Installation Banner */
+    .install-banner {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      background: white;
+      padding: 15px 20px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10000;
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .install-banner-content {
+      flex: 1;
+    }
+
+    .install-banner-title {
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 5px;
+    }
+
+    .install-banner-text {
+      font-size: 14px;
+      color: #666;
+    }
+
+    .install-banner-button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    .install-banner-close {
+      background: transparent;
+      border: none;
+      color: #999;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 5px 10px;
+    }
+  </style>
 </head>
 <body>
+  <!-- Splash Screen -->
+  <div id="loading" class="loading-container">
+    <div class="logo">
+      <span class="logo-text">🎬</span>
+    </div>
+    <div class="app-name">Video Maestro</div>
+    <div class="app-subtitle">Montage Vidéo Intelligent</div>
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Installation Banner (PWA) -->
+  <div id="installBanner" class="install-banner">
+    <div class="install-banner-content">
+      <div class="install-banner-title">Installer Video Maestro</div>
+      <div class="install-banner-text">Accès rapide depuis votre écran d'accueil</div>
+    </div>
+    <button id="installButton" class="install-banner-button">Installer</button>
+    <button id="installClose" class="install-banner-close">×</button>
+  </div>
+
+  <!-- Flutter App -->
   <script src="flutter_bootstrap.js" async></script>
+
+  <script>
+    // Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((registration) => {
+            console.log('✅ Service Worker enregistré:', registration.scope);
+            
+            // Vérifier les mises à jour
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  console.log('🔄 Nouvelle version disponible');
+                  // Afficher une notification de mise à jour
+                  showUpdateNotification();
+                }
+              });
+            });
+          })
+          .catch((error) => {
+            console.error('❌ Erreur Service Worker:', error);
+          });
+      });
+    }
+
+    // PWA Installation
+    let deferredPrompt;
+    const installBanner = document.getElementById('installBanner');
+    const installButton = document.getElementById('installButton');
+    const installClose = document.getElementById('installClose');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      
+      // Afficher le banner après 3 secondes
+      setTimeout(() => {
+        if (!localStorage.getItem('installDismissed')) {
+          installBanner.style.display = 'flex';
+        }
+      }, 3000);
+    });
+
+    installButton.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      
+      console.log(`Installation: ${outcome}`);
+      deferredPrompt = null;
+      installBanner.style.display = 'none';
+    });
+
+    installClose.addEventListener('click', () => {
+      installBanner.style.display = 'none';
+      localStorage.setItem('installDismissed', 'true');
+    });
+
+    // Masquer le splash screen quand Flutter est chargé
+    window.addEventListener('flutter-first-frame', () => {
+      const loading = document.getElementById('loading');
+      loading.classList.add('fade-out');
+      setTimeout(() => {
+        loading.style.display = 'none';
+      }, 500);
+    });
+
+    // Notification de mise à jour
+    function showUpdateNotification() {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Mise à jour disponible', {
+          body: 'Une nouvelle version de Video Maestro est disponible',
+          icon: '/icons/Icon-192.png',
+        });
+      }
+    }
+
+    // Demander la permission pour les notifications
+    if ('Notification' in window && Notification.permission === 'default') {
+      setTimeout(() => {
+        Notification.requestPermission();
+      }, 10000);
+    }
+
+    // Performance monitoring
+    window.addEventListener('load', () => {
+      if ('performance' in window) {
+        const perfData = performance.getEntriesByType('navigation')[0];
+        console.log('⚡ Performance:', {
+          loadTime: Math.round(perfData.loadEventEnd - perfData.fetchStart),
+          domReady: Math.round(perfData.domContentLoadedEventEnd - perfData.fetchStart),
+        });
+      }
+    });
+
+    // Online/Offline detection
+    window.addEventListener('online', () => {
+      console.log('🌐 En ligne');
+      document.body.style.filter = 'none';
+    });
+
+    window.addEventListener('offline', () => {
+      console.log('📴 Hors ligne - Mode offline activé');
+      document.body.style.filter = 'grayscale(0.3)';
+    });
+  </script>
 </body>
 </html>

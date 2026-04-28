@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import 'tts_controls_screen.dart';
 import 'marketplace_screen.dart';
+import 'payment_screen.dart';
 
 /// Écran de profil utilisateur
 class ProfileScreen extends StatelessWidget {
@@ -279,45 +280,11 @@ class ProfileScreen extends StatelessWidget {
   }
 
   void _showUpgradeDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.workspace_premium, color: Colors.amber),
-            SizedBox(width: 8),
-            Text('Passer à Premium'),
-          ],
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Avantages Premium:'),
-            SizedBox(height: 8),
-            Text('• Exports illimités'),
-            Text('• Résolution 4K'),
-            Text('• Sans filigrane'),
-            Text('• Support prioritaire'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Plus tard'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Fonctionnalité à venir !'),
-                ),
-              );
-            },
-            child: const Text('S\'abonner'),
-          ),
-        ],
+    // Navigation vers l'écran de paiement GeniusPay
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PaymentScreen(),
       ),
     );
   }

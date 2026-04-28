@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../models/timeline.dart';
 import '../models/job_status.dart';
 import '../models/user_stats.dart';
+import '../models/payment.dart';
 
 /// Service pour communiquer avec le backend Node.js
 class ApiService {
@@ -232,6 +233,137 @@ class ApiService {
       return data['data'];
     } catch (e) {
       throw Exception('Erreur TTS: $e');
+    }
+  }
+
+  // ==================== GENIUSPAY PAYMENT METHODS ====================
+
+  /// Crée un paiement GeniusPay
+  Future<Payment> createPayment({
+    required String userId,
+    required double amount,
+    required String currency,
+    String? plan,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/payment/create'),
+        headers: _getHeaders(),
+        body: json.encode({
+          'userId': userId,
+          'amount': amount,
+          'currency': currency,
+          'plan': plan,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Création paiement échouée: ${response.body}');
+      }
+
+      final data = json.decode(response.body);
+      if (data['success'] != true) {
+        throw Exception(data['error'] ?? 'Création paiement échouée');
+      }
+
+      return Payment.fromJson(data['data']['payment']);
+    } catch (e) {
+      throw Exception('Erreur création paiement: $e');
+    }
+  }
+
+  /// Vérifie le statut d'un paiement
+  Future<Payment> getPaymentStatus(String paymentId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/payment/status/$paymentId'),
+        headers: _getHeaders(),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Récupération statut échouée: ${response.body}');
+      }
+
+      final data = json.decode(response.body);
+      if (data['success'] != true) {
+        throw Exception(data['error'] ?? 'Récupération échouée');
+      }
+
+      return Payment.fromJson(data['data']['payment']);
+    } catch (e) {
+      throw Exception('Erreur récupération statut: $e');
+    }
+  }
+
+  /// Récupère l'historique des paiements
+  Future<List<Payment>> getPaymentHistory(String userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/payment/history?userId=$userId'),
+        headers: _getHeaders(),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Récupération historique échouée: ${response.body}');
+      }
+
+      final data = json.decode(response.body);
+      if (data['success'] != true) {
+        throw Exception(data['error'] ?? 'Récupération échouée');
+      }
+
+      final payments = (data['data']['payments'] as List)
+          .map((p) => Payment.fromJson(p))
+          .toList();
+
+      return payments;
+    } catch (e) {
+      throw Exception('Erreur récupération historique: $e');
+    }
+  }
+
+  /// Récupère le statut de l'abonnement utilisateur
+  Future<UserSubscription> getSubscriptionStatus(String userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/payment/subscription/status?userId=$userId'),
+        headers: _getHeaders(),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Récupération abonnement échouée: ${response.body}');
+      }
+
+      final data = json.decode(response.body);
+      if (data['success'] != true) {
+        throw Exception(data['error'] ?? 'Récupération échouée');
+      }
+
+      return UserSubscription.fromJson(data['data']['subscription']);
+    } catch (e) {
+      throw Exception('Erreur récupération abonnement: $e');
+    }
+  }
+
+  /// Demande un remboursement
+  Future<bool> requestRefund(String paymentId, String reason) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/payment/refund/$paymentId'),
+        headers: _getHeaders(),
+        body: json.encode({
+          'reason': reason,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Demande remboursement échouée: ${response.body}');
+      }
+
+      final data = json.decode(response.body);
+      return data['success'] == true;
+    } catch (e) {
+      throw Exception('Erreur demande remboursement: $e');
     }
   }
 }
