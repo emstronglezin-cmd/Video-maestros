@@ -1,4 +1,3 @@
-import _ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
 import { logger } from '../utils/logger';
 
@@ -7,8 +6,6 @@ import { logger } from '../utils/logger';
  * Version simplifiée pour compilation
  */
 export class FFmpegServiceV3 {
-  private _maxTimeout: number = 600000; // 10 minutes
-
   constructor(private _uploadDir: string, private outputDir: string) {}
 
   /**
