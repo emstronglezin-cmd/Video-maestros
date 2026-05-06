@@ -10,6 +10,14 @@ import {
   asyncHandler, 
   userRateLimiter,
   captionGenerateSchema,
+} from '../middleware/validation.middleware';
+import { captionService } from '../services/caption.service';
+import { templateService } from '../services/template.service';
+import { batchService } from '../services/batch.service';
+import { socialExportService } from '../services/socialExport.service';
+import { marketplaceService } from '../services/marketplace.service';
+import { logger } from '../utils/logger';
+
 const router = Router();
 
 // =======================
@@ -23,7 +31,7 @@ const router = Router();
 router.post(
   '/caption/generate',
   verifyIdToken,
-  userRateLimiter(10, 60000), // 10 requests per minute
+  userRateLimiter(10, 60000),
   validateRequest(captionGenerateSchema),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { videoPath, language, model } = req.body;
@@ -46,6 +54,7 @@ router.post('/caption/apply', verifyIdToken, async (req: Request, res: Response)
 
     if (!inputVideoPath || !srtPath || !outputVideoPath) {
       res.status(400).json({ error: 'Missing required parameters' });
+      return;
     }
 
     await captionService.applyStylizedCaptions(inputVideoPath, srtPath, outputVideoPath, style);
@@ -110,6 +119,7 @@ router.get('/templates/:id', verifyIdToken, async (req: Request, res: Response):
 
     if (!template) {
       res.status(404).json({ error: 'Template not found' });
+      return;
     }
 
     res.json({
@@ -173,6 +183,7 @@ router.post('/batch/:sessionId/add-jobs', verifyIdToken, async (req: Request, re
 
     if (!videoConfigs || !Array.isArray(videoConfigs)) {
       res.status(400).json({ error: 'videoConfigs array is required' });
+      return;
     }
 
     const jobIds = await batchService.addJobsToSession(sessionId, userId, isPremium, videoConfigs);
@@ -204,6 +215,7 @@ router.get('/batch/:sessionId/status', verifyIdToken, async (req: Request, res: 
 
     if (!status) {
       res.status(404).json({ error: 'Batch session not found' });
+      return;
     }
 
     res.json({
@@ -262,13 +274,14 @@ router.get('/batch/queue-stats', verifyIdToken, async (req: Request, res: Respon
  * POST /api/social/connect/tiktok
  * Connecte un compte TikTok
  */
-router.post('/social/connect/tiktok', verifyIdToken, async (_req: Request, res: Response): Promise<void> => {
+router.post('/social/connect/tiktok', verifyIdToken, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.uid;
     const { authCode } = req.body;
 
     if (!authCode) {
       res.status(400).json({ error: 'authCode is required' });
+      return;
     }
 
     const account = await socialExportService.connectTikTokAccount(userId, authCode);
@@ -301,6 +314,7 @@ router.post('/social/connect/instagram', verifyIdToken, async (req: Request, res
 
     if (!authCode || !redirectUri) {
       res.status(400).json({ error: 'authCode and redirectUri are required' });
+      return;
     }
 
     const account = await socialExportService.connectInstagramAccount(userId, authCode, redirectUri);
@@ -333,12 +347,14 @@ router.post('/social/post/tiktok', verifyIdToken, async (req: Request, res: Resp
 
     if (!videoPath || !config) {
       res.status(400).json({ error: 'videoPath and config are required' });
+      return;
     }
 
     const result = await socialExportService.postToTikTok(userId, videoPath, config);
 
     if (!result.success) {
       res.status(400).json({ error: result.error });
+      return;
     }
 
     res.json({
@@ -363,12 +379,14 @@ router.post('/social/post/instagram', verifyIdToken, async (req: Request, res: R
 
     if (!videoPath || !config) {
       res.status(400).json({ error: 'videoPath and config are required' });
+      return;
     }
 
     const result = await socialExportService.postToInstagram(userId, videoPath, thumbnailPath, config);
 
     if (!result.success) {
       res.status(400).json({ error: result.error });
+      return;
     }
 
     res.json({
@@ -417,6 +435,7 @@ router.delete('/social/disconnect/:platform', verifyIdToken, async (req: Request
 
     if (!['tiktok', 'instagram'].includes(platform)) {
       res.status(400).json({ error: 'Invalid platform' });
+      return;
     }
 
     const success = socialExportService.disconnectAccount(userId, platform);
@@ -565,7 +584,6 @@ router.get('/marketplace/download/:effectId', verifyIdToken, async (req: Request
 
     const filePath = await marketplaceService.downloadEffect(userId, effectId);
 
-    // Envoyer le fichier
     res.download(filePath);
 
   } catch (error) {
