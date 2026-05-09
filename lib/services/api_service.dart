@@ -5,12 +5,13 @@ import '../models/timeline.dart';
 import '../models/job_status.dart';
 import '../models/user_stats.dart';
 import '../models/payment.dart';
+import '../config/api_config.dart';
 
 /// Service pour communiquer avec le backend Node.js
 class ApiService {
-  // URL du backend - PRODUCTION RAILWAY
-  // Backend déployé sur Railway.app
-  static const String baseUrl = 'https://video-maestros-production.up.railway.app';
+  // URL du backend - PRODUCTION RENDER.COM
+  // Configuration centralisée dans api_config.dart
+  static final String baseUrl = ApiConfig.baseUrl;
 
   // Token Firebase pour authentification
   String? _authToken;

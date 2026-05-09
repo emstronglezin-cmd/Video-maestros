@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/user_profile.dart';
+import '../config/api_config.dart';
 
 /// Service pour la gestion des utilisateurs
 class UserService {
-  static const String baseUrl = 'https://video-maestros-production.up.railway.app';
+  static final String baseUrl = ApiConfig.baseUrl;
   
   String? _authToken;
 

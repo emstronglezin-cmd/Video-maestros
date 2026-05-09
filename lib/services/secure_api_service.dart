@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import '../config/api_config.dart';
 
 /// Service API Sécurisé avec Retry Logic et Error Handling
 /// Pour stabilité et maintenabilité à long terme
@@ -287,9 +288,10 @@ class SecureApiService {
 }
 
 /// Singleton instance
+/// Configuration centralisée depuis api_config.dart
 final secureApiService = SecureApiService(
-  baseUrl: 'https://video-maestros-production.up.railway.app',
-  timeout: const Duration(seconds: 30),
+  baseUrl: ApiConfig.baseUrl,
+  timeout: ApiConfig.defaultTimeout,
   maxRetries: 3,
   retryDelay: const Duration(seconds: 2),
 );
