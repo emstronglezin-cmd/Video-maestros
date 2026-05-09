@@ -1,0 +1,124 @@
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🎬 VIDEO MAESTRO V3 - DOCKER COMPOSE PRODUCTION
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Stack complète open-source pour production
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+version: '3.8'
+
+services:
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 🎬 Backend Node.js principal
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  backend:
+    build: .
+    container_name: video-maestro-backend
+    ports:
+      - "3000:3000"
+      - "5001:5001"  # Piper TTS
+      - "5002:5002"  # Faster-Whisper
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      
+      # Redis Upstash (TLS)
+      - REDIS_URL=${REDIS_URL}
+      
+      # Firebase
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+      
+      # Services IA locaux
+      - TTS_SERVICE_URL=http://localhost:5001
+      - WHISPER_SERVICE_URL=http://localhost:5002
+      - PIPER_MODELS_DIR=/opt/piper/models
+      - WHISPER_MODELS_DIR=/opt/whisper/models
+      
+      # FFmpeg
+      - FFMPEG_BINARY=ffmpeg
+      - FFPROBE_BINARY=ffprobe
+      
+      # Ollama (optionnel)
+      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
+      
+      # Storage
+      - UPLOAD_DIR=/app/uploads
+      - OUTPUT_DIR=/app/outputs
+      
+      # Security
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://video-maestros.netlify.app}
+      
+      # Monitoring
+      - LOG_LEVEL=info
+      - ENABLE_METRICS=true
+      
+    volumes:
+      - uploads:/app/uploads
+      - outputs:/app/outputs
+      - logs:/app/logs
+      
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    depends_on:
+      - ollama
+    
+    networks:
+      - video-maestro-network
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 🤖 Ollama (IA locale - optionnel)
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ollama:
+    image: ollama/ollama:latest
+    container_name: video-maestro-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    
+    networks:
+      - video-maestro-network
+    
+    # Pull model on first start
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama serve &
+        sleep 10
+        ollama pull llama2 || true
+        wait
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 📦 Volumes persistants
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+volumes:
+  uploads:
+    driver: local
+  outputs:
+    driver: local
+  logs:
+    driver: local
+  ollama-data:
+    driver: local
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🌐 Réseau
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+networks:
+  video-maestro-network:
+    driver: bridge

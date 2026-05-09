@@ -1,223 +1,150 @@
-# 🚀 Render.com Configuration - Video Maestro V3 Open Source
-# Tous les services sur un seul compte Render
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🎬 VIDEO MAESTRO V3 - RENDER.COM CONFIGURATION
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Production deployment configuration for Render.com
+# Complete open-source stack with Docker support
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 services:
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # 📦 Service 1: Backend Node.js + Python Services + Redis
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 🎬 Backend Node.js avec Docker
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   - type: web
     name: video-maestro-backend
-    env: node
-    region: oregon
-    plan: starter  # Gratuit avec 512 MB RAM
-    branch: main
-    rootDir: video-editor-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: frankfurt
     
-    buildCommand: |
-      echo "📦 Installation des dépendances..."
-      
-      # Node.js dependencies
-      npm ci
-      
-      # Python 3.11 + pip
-      apt-get update
-      apt-get install -y python3 python3-pip python3-venv
-      
-      # FFmpeg (crucial pour vidéo)
-      apt-get install -y ffmpeg
-      
-      # Whisper.cpp dependencies
-      apt-get install -y wget git build-essential
-      
-      # Redis server
-      apt-get install -y redis-server
-      
-      # Python virtual environment
-      python3 -m venv /opt/render/project/src/venv
-      source /opt/render/project/src/venv/bin/activate
-      
-      # Python services
-      pip install --upgrade pip
-      pip install -r python_services/requirements.txt
-      
-      # Télécharger modèles Piper TTS (base)
-      mkdir -p ~/.local/share/piper/models
-      wget -q https://huggingface.co/rhasspy/piper-voices/resolve/main/en_US-lessac-medium.onnx \
-           -O ~/.local/share/piper/models/en_US-lessac-medium.onnx
-      wget -q https://huggingface.co/rhasspy/piper-voices/resolve/main/en_US-lessac-medium.onnx.json \
-           -O ~/.local/share/piper/models/en_US-lessac-medium.onnx.json
-      
-      # Télécharger modèle Whisper (base)
-      python3 -c "from faster_whisper import WhisperModel; WhisperModel('base', device='cpu', compute_type='int8')"
-      
-      # Build TypeScript
-      npm run build
-      
-      echo "✅ Build terminé"
-    
-    startCommand: |
-      echo "🚀 Démarrage des services..."
-      
-      # Démarrer Redis en arrière-plan
-      redis-server --daemonize yes --bind 127.0.0.1 --port 6379
-      
-      # Activer venv Python
-      source /opt/render/project/src/venv/bin/activate
-      
-      # Démarrer services Python en arrière-plan
-      python3 python_services/piper_tts_service.py > logs/tts.log 2>&1 &
-      python3 python_services/faster_whisper_service.py > logs/whisper.log 2>&1 &
-      
-      # Attendre que les services Python démarrent
-      sleep 5
-      
-      # Démarrer Node.js backend
-      npm start
-    
+    # Variables d'environnement
     envVars:
-      # Node.js
+      # Server
       - key: NODE_ENV
         value: production
-      
       - key: PORT
         value: 3000
       
-      # Directories
-      - key: UPLOAD_DIR
-        value: /opt/render/project/src/uploads
+      # Redis Upstash (TLS)
+      - key: REDIS_URL
+        sync: false  # À configurer dans Render Dashboard
       
-      - key: OUTPUT_DIR
-        value: /opt/render/project/src/outputs
-      
-      # Redis (local)
-      - key: REDIS_HOST
-        value: 127.0.0.1
-      
-      - key: REDIS_PORT
-        value: 6379
-      
-      # Python Services (local)
-      - key: TTS_SERVICE_URL
-        value: http://localhost:5001
-      
-      - key: WHISPER_SERVICE_URL
-        value: http://localhost:5002
-      
-      # Firebase (depuis Render dashboard)
+      # Firebase Backend
       - key: FIREBASE_PROJECT_ID
         sync: false
-      
       - key: FIREBASE_PRIVATE_KEY
         sync: false
-      
       - key: FIREBASE_CLIENT_EMAIL
         sync: false
       
-      # CORS
+      # Services IA locaux (automatiques)
+      - key: TTS_SERVICE_URL
+        value: http://localhost:5001
+      - key: WHISPER_SERVICE_URL
+        value: http://localhost:5002
+      - key: PIPER_MODELS_DIR
+        value: /opt/piper/models
+      - key: WHISPER_MODELS_DIR
+        value: /opt/whisper/models
+      
+      # FFmpeg (installé automatiquement)
+      - key: FFMPEG_BINARY
+        value: ffmpeg
+      - key: FFPROBE_BINARY
+        value: ffprobe
+      
+      # Ollama (optionnel - désactivé par défaut)
+      - key: OLLAMA_URL
+        value: ""
+      
+      # Storage
+      - key: UPLOAD_DIR
+        value: /app/uploads
+      - key: OUTPUT_DIR
+        value: /app/outputs
+      - key: AUTO_CLEANUP_DAYS
+        value: 7
+      
+      # Security
       - key: ALLOWED_ORIGINS
-        value: https://video-maestro-web.onrender.com
-    
-    # Disk storage pour uploads/outputs
-    disk:
-      name: video-maestro-storage
-      mountPath: /opt/render/project/src
-      sizeGB: 10  # 10 GB gratuit
+        value: https://video-maestros.netlify.app,https://video-maestro.netlify.app
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 100
+      
+      # Monitoring
+      - key: LOG_LEVEL
+        value: info
+      - key: ENABLE_METRICS
+        value: true
     
     # Health check
     healthCheckPath: /api/health
     
-    # Auto-deploy
-    autoDeploy: true
-
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # 📱 Service 2: Flutter Web (Static Site)
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  - type: web
-    name: video-maestro-web
-    env: static
-    region: oregon
-    plan: starter  # Gratuit
-    branch: flutter
-    rootDir: .
-    
-    buildCommand: |
-      echo "🌐 Build Flutter Web..."
-      
-      # Flutter est pré-installé sur Render
-      flutter --version
-      
-      # Clean + get dependencies
-      flutter clean
-      flutter pub get
-      
-      # Build web (release mode)
-      flutter build web --release --dart-define=API_URL=https://video-maestro-backend.onrender.com
-      
-      echo "✅ Flutter Web build terminé"
-    
-    staticPublishPath: build/web
-    
-    # Headers pour Flutter Web
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: public, max-age=3600
-      
-      - path: /assets/*
-        name: Cache-Control
-        value: public, max-age=31536000, immutable
-      
-      - path: /*
-        name: X-Frame-Options
-        value: SAMEORIGIN
-      
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-    
-    # Routes (SPA)
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    
-    # Auto-deploy
-    autoDeploy: true
+    # Disks persistants
+    disk:
+      name: video-maestro-storage
+      mountPath: /app
+      sizeGB: 10
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 🗄️ Databases (optionnel - Redis déjà inclus dans backend)
+# 📋 INSTRUCTIONS DE DÉPLOIEMENT
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# databases: []  # Redis auto-hébergé dans le service backend
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 📝 Notes de déploiement
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 
-# 1. Pousser le code sur GitHub
-#    - Backend: branche 'main'
-#    - Flutter: branche 'flutter'
 #
-# 2. Créer compte Render.com (gratuit)
-#
-# 3. Connecter GitHub repository
-#
-# 4. Ajouter les variables d'environnement Firebase dans Render Dashboard:
+# 1. Créer un compte Render: https://render.com
+# 2. Créer un nouveau Web Service depuis GitHub
+# 3. Sélectionner ce repository (branche main)
+# 4. Render détectera automatiquement render.yaml
+# 5. Configurer les variables d'environnement sensibles:
+#    - REDIS_URL (Upstash Redis)
 #    - FIREBASE_PROJECT_ID
-#    - FIREBASE_PRIVATE_KEY (JSON escapé)
+#    - FIREBASE_PRIVATE_KEY
 #    - FIREBASE_CLIENT_EMAIL
+# 6. Déployer
 #
-# 5. Déployer automatiquement via render.yaml
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🔗 REDIS UPSTASH (Gratuit)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
-# 6. URLs après déploiement:
-#    - Backend API: https://video-maestro-backend.onrender.com
-#    - Frontend Web: https://video-maestro-web.onrender.com
+# 1. Créer un compte: https://console.upstash.com/
+# 2. Créer une base Redis (plan gratuit: 10,000 commandes/jour)
+# 3. Copier l'URL TLS (rediss://...)
+# 4. Ajouter dans Render:
+#    Variable: REDIS_URL
+#    Valeur: rediss://default:xxxxx@xxxx.upstash.io:6380
 #
-# 7. Cold start: ~30 secondes (plan gratuit)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🔥 FIREBASE
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
-# 8. Limitations plan gratuit:
-#    - 512 MB RAM par service
-#    - 10 GB disk storage
-#    - Inactif après 15 min (redémarre automatiquement)
-#    - 750 heures/mois gratuites
+# Récupérer les credentials depuis Firebase Console:
+# Project Settings > Service Accounts > Generate New Private Key
+#
+# Variables:
+# - FIREBASE_PROJECT_ID: votre-project-id
+# - FIREBASE_CLIENT_EMAIL: firebase-adminsdk-xxx@xxx.iam.gserviceaccount.com
+# - FIREBASE_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ✅ SERVICES INCLUS (Gratuits - Open Source)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# ✅ FFmpeg (video processing) - Installé automatiquement
+# ✅ Piper TTS (text-to-speech) - Installé automatiquement
+# ✅ Faster-Whisper (transcription) - Installé automatiquement
+# ✅ Python 3.11 + Flask - Installé automatiquement
+# ✅ Node.js 20 LTS - Runtime Render
+# ✅ Redis Queue - Upstash (externe, gratuit)
+# ⚠️ Ollama (optionnel) - Désactivé par défaut (consomme RAM)
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 💰 COÛTS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# Plan Render Starter: 7$/mois (ou gratuit avec limitations)
+# Redis Upstash Free: 0$ (10k commandes/jour)
+# Firebase Free: 0$ (quotas généreux)
+#
+# Total: ~7$/mois (ou 0$ avec plan gratuit Render)
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

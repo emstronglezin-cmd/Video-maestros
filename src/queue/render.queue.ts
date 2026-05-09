@@ -3,15 +3,34 @@ import { FFmpegEngine, RenderOptions, RenderResult } from '../modules/video/ffmp
 import { logger } from '../utils/logger';
 
 /**
- * Configuration Redis (optionnel pour Railway)
+ * Configuration Redis (Support Upstash TLS et localhost)
+ * REDIS_URL prend priorité sur REDIS_HOST/PORT
  */
-const REDIS_ENABLED = process.env.REDIS_HOST ? true : false;
+const REDIS_URL = process.env.REDIS_URL;
+const REDIS_HOST = process.env.REDIS_HOST;
+const REDIS_ENABLED = !!(REDIS_URL || REDIS_HOST);
 
-const redisConnection = REDIS_ENABLED ? {
-  host: process.env.REDIS_HOST!,
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-  maxRetriesPerRequest: null
-} : null;
+// Configuration Redis avec support TLS pour Upstash
+const redisConnection = REDIS_ENABLED ? (
+  REDIS_URL ? 
+    // Upstash Redis TLS (rediss://)
+    {
+      url: REDIS_URL,
+      tls: REDIS_URL.startsWith('rediss://') ? {} : undefined,
+      maxRetriesPerRequest: null,
+      retryStrategy: (times: number) => {
+        if (times > 3) return null;
+        return Math.min(times * 1000, 5000);
+      }
+    } :
+    // Redis localhost (dev)
+    {
+      host: REDIS_HOST!,
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+      password: process.env.REDIS_PASSWORD || undefined,
+      maxRetriesPerRequest: null
+    }
+) : null;
 
 /**
  * Job data pour le rendu

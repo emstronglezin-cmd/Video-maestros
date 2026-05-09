@@ -7,7 +7,9 @@ import { VideoController } from './modules/video/video.controller';
 import { UserController } from './modules/user/user.controller';
 import { StorageController } from './modules/storage/storage.controller';
 import v3Controller from './controllers/v3.controller';
+import adsController from './controllers/ads.controller';
 import { logger, requestLogger } from './utils/logger';
+import { monitoringMiddleware } from './utils/production-monitor';
 import {
   corsMiddleware,
   globalRateLimiter,
@@ -221,7 +223,10 @@ export function createApp(): Express {
   // 12. V3 Routes: Caption, Template, Batch, Social, Marketplace
   app.use('/api', v3Controller);
 
-  // 13. 404 handler
+  // 13. Ads Routes: Start.io Integration (requires auth)
+  app.use('/api/ads', adsController);
+
+  // 14. 404 handler
   app.use((_req: Request, res: Response) => {
     res.status(404).json({
       success: false,
@@ -297,6 +302,8 @@ export async function startServer(): Promise<void> {
 ║     POST   /api/batch/create     (auth required) [V3]     ║
 ║     GET    /api/social/accounts  (auth required) [V3]     ║
 ║     GET    /api/marketplace/*    (auth required) [V3]     ║
+║     GET    /api/ads/config       (auth required) [ADS]   ║
+║     POST   /api/ads/impression   (auth required) [ADS]   ║
 ╚════════════════════════════════════════════════════════════╝
       `);
     });
