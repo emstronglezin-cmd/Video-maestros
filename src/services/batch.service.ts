@@ -388,9 +388,10 @@ export class BatchService {
       if (job.status === 'processing') {
         const bullJob = await this.queue.getJob(job.jobId);
         if (bullJob) {
-          const progress: any = await bullJob.progress();
-          if (progress && typeof progress === 'object') {
-            job.progress = progress.percentage || 0;
+          // BullMQ v4: progress is a property, not a method
+          const progressData = bullJob.progress as any;
+          if (progressData && typeof progressData === 'object') {
+            job.progress = progressData.percentage || 0;
           }
         }
       }
@@ -410,12 +411,13 @@ export class BatchService {
     }
 
     const state = await job.getState();
-    const progress: any = await job.progress();
+    // BullMQ v4: progress is a property, not a method
+    const progressData = job.progress as any;
 
     return {
       jobId: job.id,
       state,
-      progress,
+      progress: progressData,
       data: job.data,
       result: job.returnvalue,
       failedReason: job.failedReason,

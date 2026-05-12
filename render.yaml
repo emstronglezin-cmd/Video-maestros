@@ -1,20 +1,23 @@
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 🎬 VIDEO MAESTRO V3 - RENDER.COM CONFIGURATION
+# 🎬 VIDEO MAESTRO - RENDER.COM CONFIGURATION (FREE TIER)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Production deployment configuration for Render.com
-# Complete open-source stack with Docker support
+# Optimisé pour plan gratuit Render
+# RAM: 512MB | CPU: 0.1 vCPU | Disk: 0GB persistent
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 services:
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # 🎬 Backend Node.js avec Docker
+  # 🎬 Backend Node.js avec Docker (FREE TIER)
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   - type: web
     name: video-maestro-backend
     runtime: docker
     dockerfilePath: ./Dockerfile
-    plan: starter
+    plan: free
     region: frankfurt
+    
+    # Build configuration
+    buildCommand: ""  # Docker build uniquement
     
     # Variables d'environnement
     envVars:
@@ -23,10 +26,12 @@ services:
         value: production
       - key: PORT
         value: 3000
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=384
       
-      # Redis Upstash (TLS)
+      # Redis Upstash (GRATUIT - TLS)
       - key: REDIS_URL
-        sync: false  # À configurer dans Render Dashboard
+        sync: false  # À configurer dans Dashboard
       
       # Firebase Backend
       - key: FIREBASE_PROJECT_ID
@@ -41,84 +46,91 @@ services:
         value: http://localhost:5001
       - key: WHISPER_SERVICE_URL
         value: http://localhost:5002
-      - key: PIPER_MODELS_DIR
-        value: /opt/piper/models
+      - key: WHISPER_MODEL_SIZE
+        value: tiny
       - key: WHISPER_MODELS_DIR
         value: /opt/whisper/models
       
-      # FFmpeg (installé automatiquement)
+      # FFmpeg (installé dans Docker)
       - key: FFMPEG_BINARY
         value: ffmpeg
       - key: FFPROBE_BINARY
         value: ffprobe
       
-      # Ollama (optionnel - désactivé par défaut)
-      - key: OLLAMA_URL
-        value: ""
-      
-      # Storage
+      # Storage (éphémère sur free tier)
       - key: UPLOAD_DIR
         value: /app/uploads
       - key: OUTPUT_DIR
         value: /app/outputs
       - key: AUTO_CLEANUP_DAYS
-        value: 7
+        value: 1
       
       # Security
       - key: ALLOWED_ORIGINS
-        value: https://video-maestros.netlify.app,https://video-maestro.netlify.app
+        value: https://video-maestros.netlify.app,https://localhost:3000
       - key: RATE_LIMIT_WINDOW_MS
         value: 900000
       - key: RATE_LIMIT_MAX_REQUESTS
-        value: 100
+        value: 50
       
       # Monitoring
       - key: LOG_LEVEL
         value: info
       - key: ENABLE_METRICS
+        value: false
+      
+      # Start.io Ads
+      - key: STARTIO_ENABLED
         value: true
+      - key: STARTIO_PUBLISHER_ID
+        sync: false
     
     # Health check
     healthCheckPath: /api/health
     
-    # Disks persistants
-    disk:
-      name: video-maestro-storage
-      mountPath: /app
-      sizeGB: 10
+    # Auto-deploy on push
+    autoDeploy: true
+    
+    # Branch
+    branch: main
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 📋 INSTRUCTIONS DE DÉPLOIEMENT
+# 📋 INSTRUCTIONS DÉPLOIEMENT RENDER FREE
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
-# 1. Créer un compte Render: https://render.com
-# 2. Créer un nouveau Web Service depuis GitHub
-# 3. Sélectionner ce repository (branche main)
+# 1. Créer compte Render: https://render.com (GRATUIT)
+# 2. "New" → "Web Service"
+# 3. Connecter GitHub: Video-maestros (branch main)
 # 4. Render détectera automatiquement render.yaml
-# 5. Configurer les variables d'environnement sensibles:
-#    - REDIS_URL (Upstash Redis)
+# 5. Configurer UNIQUEMENT les variables sensibles:
+#    - REDIS_URL (Upstash gratuit)
 #    - FIREBASE_PROJECT_ID
 #    - FIREBASE_PRIVATE_KEY
 #    - FIREBASE_CLIENT_EMAIL
-# 6. Déployer
+#    - STARTIO_PUBLISHER_ID
+# 6. Cliquer "Deploy"
+#
+# ⏱️ Premier déploiement: ~10-15 minutes
+# ⏱️ Déploiements suivants: ~5-8 minutes
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 🔗 REDIS UPSTASH (Gratuit)
+# 🔗 REDIS UPSTASH (100% GRATUIT)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
-# 1. Créer un compte: https://console.upstash.com/
-# 2. Créer une base Redis (plan gratuit: 10,000 commandes/jour)
-# 3. Copier l'URL TLS (rediss://...)
-# 4. Ajouter dans Render:
+# 1. https://console.upstash.com/ (créer compte gratuit)
+# 2. "Create Database" → Region: EU (Frankfurt)
+# 3. Plan: Free (10,000 commandes/jour - SUFFISANT)
+# 4. Copier "TLS (SSL) URL": rediss://...
+# 5. Dans Render Dashboard:
 #    Variable: REDIS_URL
-#    Valeur: rediss://default:xxxxx@xxxx.upstash.io:6380
+#    Value: rediss://default:xxxxx@xxxxx.upstash.io:6380
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 🔥 FIREBASE
+# 🔥 FIREBASE (100% GRATUIT)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
-# Récupérer les credentials depuis Firebase Console:
-# Project Settings > Service Accounts > Generate New Private Key
+# Firebase Console → Project Settings → Service Accounts
+# → Generate New Private Key
 #
 # Variables:
 # - FIREBASE_PROJECT_ID: votre-project-id
@@ -126,25 +138,50 @@ services:
 # - FIREBASE_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# ✅ SERVICES INCLUS (Gratuits - Open Source)
+# 📺 START.IO (100% GRATUIT)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
-# ✅ FFmpeg (video processing) - Installé automatiquement
-# ✅ Piper TTS (text-to-speech) - Installé automatiquement
-# ✅ Faster-Whisper (transcription) - Installé automatiquement
-# ✅ Python 3.11 + Flask - Installé automatiquement
-# ✅ Node.js 20 LTS - Runtime Render
-# ✅ Redis Queue - Upstash (externe, gratuit)
-# ⚠️ Ollama (optionnel) - Désactivé par défaut (consomme RAM)
+# 1. https://portal.start.io/ (créer compte gratuit)
+# 2. "Add New App" → Web
+# 3. Copier "Publisher ID"
+# 4. Dans Render Dashboard:
+#    Variable: STARTIO_PUBLISHER_ID
+#    Value: votre_publisher_id
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 💰 COÛTS
+# ✅ SERVICES INCLUS (100% GRATUIT)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
-# Plan Render Starter: 7$/mois (ou gratuit avec limitations)
-# Redis Upstash Free: 0$ (10k commandes/jour)
-# Firebase Free: 0$ (quotas généreux)
+# ✅ FFmpeg (video processing) - Léger
+# ✅ Faster-Whisper TINY (transcription) - 50MB
+# ✅ Piper TTS (text-to-speech) - Léger
+# ✅ Python 3.11 + Flask
+# ✅ Node.js 20 LTS
+# ✅ Redis Queue (Upstash externe)
+# ❌ Ollama DÉSACTIVÉ (trop lourd pour free tier - 2GB+ RAM)
 #
-# Total: ~7$/mois (ou 0$ avec plan gratuit Render)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 💰 COÛTS TOTAUX
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# Render Free Tier: 0€/mois (750h/mois)
+# Redis Upstash Free: 0€/mois (10k commandes/jour)
+# Firebase Free: 0€/mois (quotas généreux)
+# Start.io: 0€/mois (revenus publicitaires)
+#
+# TOTAL: 0€/mois (100% GRATUIT)
+#
+# ⚠️ Limitations Free Tier:
+# - Service s'endort après 15min d'inactivité
+# - Premier appel après sommeil: ~30s de cold start
+# - RAM: 512MB (suffisant pour services légers)
+# - CPU: 0.1 vCPU partagé (suffisant pour usage modéré)
+# - Disk: 0GB persistent (fichiers éphémères)
+#
+# 💡 Recommandations:
+# - Nettoyage automatique fichiers chaque jour
+# - Pas de stockage persistent (utiliser external storage si besoin)
+# - Optimiser mémoire Node.js (384MB max)
+# - Utiliser Upstash Redis (externe, persistent)
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

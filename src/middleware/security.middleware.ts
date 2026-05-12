@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
+import cors from 'cors';
 
 /**
  * 🔒 MIDDLEWARE DE SÉCURITÉ RENFORCÉE
@@ -281,6 +282,18 @@ export function auditLog(req: Request, _res: Response, next: NextFunction): void
 
   next();
 }
+
+/**
+ * Configuration CORS middleware
+ */
+export const corsMiddleware = cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:5173'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 86400, // 24 heures
+});
 
 /**
  * Validation CORS stricte

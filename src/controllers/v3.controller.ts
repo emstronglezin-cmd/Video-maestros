@@ -14,7 +14,7 @@ import {
 import { captionService } from '../services/caption.service';
 import { templateService } from '../services/template.service';
 import { batchService } from '../services/batch.service';
-import { socialExportService } from '../services/socialExport.service';
+import { socialExportService } from '../services/social-export.service';
 import { marketplaceService } from '../services/marketplace.service';
 import { logger } from '../utils/logger';
 
@@ -411,7 +411,7 @@ router.get('/social/accounts', verifyIdToken, async (req: Request, res: Response
 
     res.json({
       success: true,
-      data: accounts.map(acc => ({
+      data: accounts.map((acc: any) => ({
         platform: acc.platform,
         username: acc.platformUsername,
         connected: acc.isActive
