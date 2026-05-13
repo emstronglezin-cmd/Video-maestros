@@ -1,10 +1,9 @@
-# Speech Recognition - version compatible Render
+# Speech Recognition
 faster-whisper==0.10.1
 ctranslate2==3.20.0
 
-# Audio Processing
+# Audio Processing - SANS av
 pydub==0.25.1
-soundfile==0.12.1
 ffmpeg-python==0.2.0
 
 # Flask
@@ -14,8 +13,5 @@ Flask-CORS==4.0.0
 # Utilitaires
 numpy==1.24.4
 
-# Redis client
+# Redis
 redis==5.0.1
-
-# ONNX Runtime CPU only
-onnxruntime==1.16.3
