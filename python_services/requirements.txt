@@ -1,27 +1,21 @@
-# 🐍 Python Dependencies - Render Free Tier Optimized
-# Lightweight AI services - CPU only, no GPU dependencies
+# Speech Recognition - version compatible Render
+faster-whisper==0.10.1
+ctranslate2==3.20.0
 
-# Speech Recognition (Faster-Whisper - LIGHTWEIGHT)
-faster-whisper==1.0.3
-# Note: torch with CPU-only to reduce size
-# torch==2.1.0+cpu  # Will be installed via pip index
-ctranslate2==3.24.0
-
-# TTS (Text-to-Speech) - Piper
-piper-tts==1.2.0
-onnxruntime==1.16.3
-
-# Audio Processing (lightweight)
+# Audio Processing
 pydub==0.25.1
 soundfile==0.12.1
 ffmpeg-python==0.2.0
 
-# Flask pour micro-services
+# Flask
 Flask==3.0.0
 Flask-CORS==4.0.0
 
-# Utilitaires (minimal)
-numpy==1.26.4
+# Utilitaires
+numpy==1.24.4
 
-# Redis client Python (Upstash compatible)
+# Redis client
 redis==5.0.1
+
+# ONNX Runtime CPU only
+onnxruntime==1.16.3
