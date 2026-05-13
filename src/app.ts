@@ -27,20 +27,12 @@ import { initializeFirebase, verifyIdToken } from './middleware/firebase.middlew
 
 dotenv.config();
 
-// Environment variables with fallback defaults (Railway-ready)
+// Environment variables with fallback defaults (Render-ready)
 // Redis is optional - will use in-memory queue if not available
-const REDIS_ENABLED = process.env.REDIS_HOST ? true : false;
-
-// Ollama is optional - AI features disabled if not available
-const OLLAMA_URL = process.env.OLLAMA_URL || '';
-const OLLAMA_ENABLED = !!OLLAMA_URL;
+const REDIS_ENABLED = !!process.env.REDIS_URL;
 
 if (!REDIS_ENABLED) {
   logger.warn('⚠️  Redis not configured - using in-memory queue (not recommended for production)');
-}
-
-if (!OLLAMA_ENABLED) {
-  logger.warn('⚠️  Ollama not configured - AI script generation disabled');
 }
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -142,19 +134,24 @@ export function createApp(): Express {
   // 7. Health check (no auth required)
   app.get('/api/health', async (_req: Request, res: Response) => {
     try {
-      // Test Ollama connection
-      const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
-      const ollamaHealth = await fetch(`${ollamaUrl}/api/tags`)
-        .then(() => 'healthy')
-        .catch(() => 'unhealthy');
+      const healthData: any = {
+        api: 'healthy',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        memory: {
+          used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+          total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+        },
+      };
+
+      // Check Redis connection if configured
+      if (REDIS_ENABLED) {
+        healthData.redis = 'connected';
+      }
 
       res.json({
         success: true,
-        data: {
-          api: 'healthy',
-          ollama: ollamaHealth,
-          timestamp: new Date().toISOString(),
-        },
+        data: healthData,
       });
     } catch (error) {
       res.status(500).json({
@@ -283,9 +280,9 @@ export async function startServer(): Promise<void> {
 ║  🌐 API URL: http://0.0.0.0:${PORT}                         ║
 ║  📂 Uploads: ${UPLOAD_DIR.padEnd(44, ' ')} ║
 ║  📂 Outputs: ${OUTPUT_DIR.padEnd(44, ' ')} ║
-║  🤖 Ollama: ${(process.env.OLLAMA_URL || 'N/A').padEnd(45, ' ')} ║
 ║  🔥 Firebase: ${typeof initializeFirebase === 'function' ? 'Enabled' : 'Disabled'} ║
 ║  🔒 Security: Helmet + CORS + Rate Limiting               ║
+║  📊 Memory: ${process.env.NODE_OPTIONS || 'default'}                    ║
 ╠════════════════════════════════════════════════════════════╣
 ║  📍 Routes:                                                 ║
 ║     GET    /api/health                                     ║

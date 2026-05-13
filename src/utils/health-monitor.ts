@@ -116,8 +116,6 @@ export class HealthMonitor {
         return this.checkRedis();
       case 'firebase':
         return this.checkFirebase();
-      case 'ollama':
-        return this.checkOllama();
       case 'ffmpeg':
         return this.checkFFmpeg();
       case 'whisper':

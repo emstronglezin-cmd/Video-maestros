@@ -1,26 +1,27 @@
-# 🐍 Python Dependencies - Open Source Solutions
+# 🐍 Python Dependencies - Render Free Tier Optimized
+# Lightweight AI services - CPU only, no GPU dependencies
 
-# TTS (Text-to-Speech)
+# Speech Recognition (Faster-Whisper - LIGHTWEIGHT)
+faster-whisper==1.0.3
+# Note: torch with CPU-only to reduce size
+# torch==2.1.0+cpu  # Will be installed via pip index
+ctranslate2==3.24.0
+
+# TTS (Text-to-Speech) - Piper
 piper-tts==1.2.0
-onnxruntime==1.19.2
+onnxruntime==1.16.3
 
-# Speech Recognition
-faster-whisper==1.1.0
-torch==2.5.1
-transformers==4.47.1
-
-# Audio Processing
+# Audio Processing (lightweight)
 pydub==0.25.1
-librosa==0.10.2.post1
+soundfile==0.12.1
+ffmpeg-python==0.2.0
 
 # Flask pour micro-services
-Flask==3.1.0
-Flask-CORS==5.0.0
+Flask==3.0.0
+Flask-CORS==4.0.0
 
-# Utilitaires
-numpy==2.2.1
-scipy==1.15.0
-soundfile==0.12.1
+# Utilitaires (minimal)
+numpy==1.26.4
 
-# Redis client Python
-redis==5.2.1
+# Redis client Python (Upstash compatible)
+redis==5.0.1

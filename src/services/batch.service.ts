@@ -9,12 +9,21 @@ import { Redis } from 'ioredis';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger';
 
-// Configuration Redis
-const redisConnection = new Redis({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379', 10),
-  password: process.env.REDIS_PASSWORD || undefined,
-  maxRetriesPerRequest: null
+// Configuration Redis (Upstash TLS compatible)
+const redisUrl = process.env.REDIS_URL;
+
+if (!redisUrl) {
+  logger.error('❌ REDIS_URL environment variable is required');
+  throw new Error('REDIS_URL not configured - BullMQ requires Redis');
+}
+
+const redisConnection = new Redis(redisUrl, {
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+  retryStrategy: (times: number) => {
+    const delay = Math.min(times * 50, 2000);
+    return delay;
+  },
 });
 
 export interface BatchJobData {
